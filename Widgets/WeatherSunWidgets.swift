@@ -221,26 +221,18 @@ struct SunView: View {
 
     private func small(_ c: SunCity) -> some View {
         let d = day(c)
-        let ms = entry.date.timeIntervalSince1970 * 1000
-        let up = (d?.rise ?? 0) <= ms && ms < (d?.set ?? 0)
-        let daylight = ((d?.set ?? 0) - (d?.rise ?? 0)) / 3_600_000
-        let frac = up ? (ms - (d?.rise ?? 0)) / max(1, (d?.set ?? 1) - (d?.rise ?? 0)) : 0
+        let ms: Double = entry.date.timeIntervalSince1970 * 1000
+        let rise: Double = d?.rise ?? 0
+        let set: Double = d?.set ?? 0
+        let up: Bool = rise <= ms && ms < set
+        let daylight: Double = (set - rise) / 3_600_000
+        let frac: Double = up ? (ms - rise) / max(1, set - rise) : 0
         return VStack(alignment: .leading, spacing: 5) {
             Caption(text: "Sun · \(c.code)")
             // the sun's path as an arc of dots, lit up to where it is now
-            GeometryReader { g in
-                let n = 13
-                ZStack {
-                    ForEach(0..<n, id: \.self) { i in
-                        let a = Double.pi * Double(i) / Double(n - 1)
-                        let x = g.size.width / 2 - cos(a) * (g.size.width / 2 - 6)
-                        let y = g.size.height - sin(a) * (g.size.height - 6) - 3
-                        let lit = up && Double(i) / Double(n - 1) <= frac
-                        Circle().fill(lit ? Ax.yellow : Ax.ink.opacity(0.18))
-                            .frame(width: 5, height: 5)
-                            .position(x: x, y: y)
-                    }
-                }
+            ZStack {
+                SunArc(upTo: up ? frac : -1, lit: false).fill(Ax.ink.opacity(0.18))
+                SunArc(upTo: up ? frac : -1, lit: true).fill(Ax.yellow)
             }
             .frame(height: 38)
             HStack {
@@ -256,6 +248,27 @@ struct SunView: View {
             }
             Caption(text: "\(TimeFmt.hours(daylight)) daylight")
         }
+    }
+}
+
+/// Thirteen dots on a half-circle from sunrise to sunset; `lit` draws only the ones the sun has passed.
+struct SunArc: Shape {
+    let upTo: Double
+    let lit: Bool
+
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        let n = 13
+        let w = Double(rect.width), h = Double(rect.height)
+        for i in 0..<n {
+            let t = Double(i) / Double(n - 1)
+            if (t <= upTo) != lit { continue }
+            let a = Double.pi * t
+            let x = w / 2 - cos(a) * (w / 2 - 6)
+            let y = h - sin(a) * (h - 6) - 3
+            p.addEllipse(in: CGRect(x: Double(rect.minX) + x - 2.5, y: Double(rect.minY) + y - 2.5, width: 5, height: 5))
+        }
+        return p
     }
 }
 
