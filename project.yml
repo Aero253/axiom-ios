@@ -1,0 +1,100 @@
+name: Axiom
+options:
+  bundleIdPrefix: com.aero253
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: ""
+    CODE_SIGNING_REQUIRED: "NO"
+    CODE_SIGNING_ALLOWED: "NO"
+    DEVELOPMENT_TEAM: ""
+    ENABLE_USER_SCRIPT_SANDBOXING: "NO"
+    TARGETED_DEVICE_FAMILY: "1,2"
+targets:
+  Axiom:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+      - path: Shared
+      - path: web
+        type: folder
+        buildPhase: resources
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: Axiom
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSRequiresIPhoneOS: true
+        UILaunchScreen:
+          UIColorName: ""
+        UIStatusBarStyle: UIStatusBarStyleLightContent
+        UIViewControllerBasedStatusBarAppearance: true
+        UIRequiresFullScreen: false
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+          - UIInterfaceOrientationPortraitUpsideDown
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        ITSAppUsesNonExemptEncryption: false
+        LSSupportsOpeningDocumentsInPlace: false
+    entitlements:
+      path: App/Axiom.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.aero253.axiom
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.aero253.axiom
+        PRODUCT_NAME: Axiom
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        INFOPLIST_KEY_CFBundleDisplayName: Axiom
+    dependencies:
+      - target: AxiomWidgets
+        embed: true
+  AxiomWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Widgets
+      - path: Shared
+    info:
+      path: Widgets/Info.plist
+      properties:
+        CFBundleDisplayName: Axiom
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: Widgets/AxiomWidgets.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.aero253.axiom
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.aero253.axiom.widgets
+        PRODUCT_NAME: AxiomWidgets
+        SKIP_INSTALL: "YES"
+schemes:
+  Axiom:
+    build:
+      targets:
+        Axiom: all
+        AxiomWidgets: all
+    run:
+      config: Debug
+    archive:
+      config: Release
