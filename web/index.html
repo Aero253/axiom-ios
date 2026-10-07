@@ -2706,16 +2706,59 @@ refreshWx(); setInterval(refreshWx, 30 * 60e3); refreshFx(); setInterval(refresh
 /* ---------- iPhone app bridge: only active inside the Axiom iPhone app, which shows this data in Home Screen widgets ---------- */
 // declared with var and looked up on call, so save() can run safely during start-up before this part of the file has run
 function nativeH() { try { return window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.axiom; } catch (e) { return null; } }
+function chipText(d) {
+  if (!d) return '';
+  if (d.type === 'FDP') { const ds = dests(d); return ds.length ? ds.join(' ') : (d.legs && d.legs.length ? d.legs.map(l => l.to).join(' ') : 'FLT'); }
+  if (d.type === 'HSBY' || d.type === 'ASBY') return d.label && d.label.length <= 5 ? d.label : 'SB';
+  return { RES: 'RES', OFF: 'OFF', AL: 'A/L', RST: 'REST' }[d.type] || d.type;
+}
 function widgetPayload() {
-  const now = Date.now();
-  const list = duties().filter(d => !FREE.includes(d.type) && span(d)).map(d => ({ d, s: span(d) })).filter(x => x.s[1] > now - 864e5)
-    .sort((a, b) => a.s[0] - b.s[0]).slice(0, 16).map(({ d, s }) => ({
-      date: d.date, type: d.type, what: d.type === 'FDP' ? 'Report' : (TYPES[d.type] || d.type), start: d.start || null, end: d.end || null, rep: s[0], off: s[1],
-      flts: (d.legs || []).map(l => l.flt).filter(Boolean),
-      route: d.legs && d.legs.length ? [d.legs[0].from, ...d.legs.map(l => l.to)] : [],
-      legs: (d.legs || []).map(l => ({ flt: l.flt || null, from: l.from, to: l.to, dep: l.dep || null, arr: l.arr || null })) }));
-  return { v: 1, at: now, demo: demo(), base: base(), duties: list,
-    water: { date: S.water.date || '', n: S.water.n || 0, goal: S.water.goal || 8, ts: S.water.ts || 0 }, theme: document.documentElement.dataset.theme || 'dark' };
+  const now = Date.now(), t = todayISO(), ll = c => AP[c] ? [AP[c][0], AP[c][1]] : null;
+  const list = duties().filter(d => !FREE.includes(d.type) && span(d)).map(d => ({ d, s: span(d) })).filter(x => x.s[1] > now - 3 * 864e5)
+    .sort((a, b) => a.s[0] - b.s[0]).slice(0, 20).map(({ d, s }) => {
+      const lt = legTimes(d), last = d.legs && d.legs.length ? d.legs[d.legs.length - 1].to : null;
+      return { date: d.date, type: d.type, what: d.type === 'FDP' ? 'Report' : (TYPES[d.type] || d.type), start: d.start || null, end: d.end || null, rep: s[0], off: s[1],
+        flts: (d.legs || []).map(l => l.flt).filter(Boolean),
+        route: d.legs && d.legs.length ? [d.legs[0].from, ...d.legs.map(l => l.to)] : [],
+        coords: d.legs && d.legs.length ? [d.legs[0].from, ...d.legs.map(l => l.to)].map(ll) : [],
+        away: !!(last && last !== base()), chip: chipText(d),
+        legs: (d.legs || []).map((l, i) => { const m = lt.find(x => x.from === l.from && x.to === l.to && x.dep === l.dep);
+          return { flt: l.flt || null, from: l.from, to: l.to, dep: l.dep || null, arr: l.arr || null, depMs: m ? m.depMs : null, arrMs: m ? m.arrMs : null }; }) };
+    });
+  const day = ds => { const d = dutyOn(ds); return { date: ds, type: d ? d.type : '', chip: chipText(d), start: d && d.start || null, end: d && d.end || null,
+    txt: d ? (d.type === 'FDP' ? (d.legs && d.legs.length ? [d.legs[0].from, ...d.legs.map(l => l.to)].join(' › ') : 'Flight') : (d.label || TYPES[d.type])) : '',
+    plans: S.events.filter(e => e.date === ds).length }; };
+  const ym = t.slice(0, 7), [yy, mm] = ym.split('-').map(Number), ml = new Date(Date.UTC(yy, mm, 0)).getUTCDate();
+  // duty hours, the same sums as the Duty hours widget on the dashboard
+  const timed = duties().filter(d => dutyFactor(d) && span(d)).map(d => ({ d, s: span(d) })).sort((a, b) => a.s[0] - b.s[0]);
+  const lastOff = timed.filter(x => x.s[1] <= now).pop();
+  const ftl = { duty7: dutyIn(now - 7 * 864e5, now), duty14: dutyIn(now - 14 * 864e5, now), duty28: dutyIn(now - 28 * 864e5, now), flight28: flightIn(now - 28 * 864e5, now),
+    lim: LIM, at: now, lastOff: lastOff ? lastOff.s[1] : null,
+    lastAway: !!(lastOff && lastOff.d.legs && lastOff.d.legs.length && lastOff.d.legs[lastOff.d.legs.length - 1].to !== base()) };
+  const wd = nextDuty(), w = S.wake;
+  let wake = null;
+  if (wd) { const rep = span(wd)[0], leave = rep - w.travel * 60000, alarm = leave - w.ready * 60000; wake = { rep, leave, alarm, bed: alarm - w.sleep * 3600e3, what: wd.type === 'FDP' ? 'Report' : (TYPES[wd.type] || wd.type), flt: wd.legs && wd.legs[0] ? wd.legs[0].flt || null : null }; }
+  const sunDays = c => [0, 1, 2].map(i => { const ds = addDays(t, i), rs = AP[c] ? sunRS(ds, AP[c][0], AP[c][1]) : null; return { d: ds, rise: rs ? rs[0] : null, set: rs ? rs[1] : null }; });
+  const wx = WX && WX.cities ? { updatedAt: WX.updatedAt || '', cities: wxCodes().map(c => { const x = WX.cities.find(y => y.code === c);
+      return { code: c, name: AP[c] ? AP[c][2] : c, lat: AP[c] ? AP[c][0] : 0, lon: AP[c] ? AP[c][1] : 0, tz: TZ[c] || 'Asia/Bangkok',
+        current: x && x.current ? { t: x.current.t, cond: x.current.cond || 'cloud', text: x.current.text || '' } : null,
+        daily: x && x.daily ? x.daily.filter(q => q.d >= t).slice(0, 6).map(q => ({ d: q.d, hi: q.hi, lo: q.lo, p: q.p || 0, cond: q.cond || 'cloud' })) : [] }; }) } : null;
+  const items = k => S[k].slice(0, 30).map(i => ({ id: String(i.id), text: i.text, done: !!i.done, qty: i.qty ? String(i.qty) : null }));
+  const al = duties().find(d => d.type === 'AL' && d.date > t && !demo());
+  const counts = [...S.count, ...(al && !S.count.some(c => c.date === al.date) ? [{ title: 'Annual leave', date: al.date }] : [])]
+    .filter(c => c.date >= t).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 8).map(c => ({ title: c.title, date: c.date }));
+  const lays = layovers().map(x => { const v = S.lay[x.key] || {}, tz = tzOf(x.to); let pickupMs = null;
+    if (v.pickup) { const nd = duties().filter(d => d.date > x.d.date && d.legs).sort((a, b) => a.date.localeCompare(b.date))[0]; pickupMs = tzToUtc(nd ? nd.date : addDays(x.d.date, 1), v.pickup, tz); }
+    return { to: x.to, name: AP[x.to] ? AP[x.to][2] : x.to, tz, arr: x.arr, hotel: v.hotel || null, room: v.room || null, pickup: v.pickup || null, pickupMs }; }).slice(0, 4);
+  return { v: 2, at: now, demo: demo(), base: base(), duties: list,
+    water: { date: S.water.date || '', n: S.water.n || 0, goal: S.water.goal || 8, ts: S.water.ts || 0 }, theme: document.documentElement.dataset.theme || 'dark',
+    days: Array.from({ length: 14 }, (_, i) => day(addDays(t, i))),
+    month: { ym, days: Array.from({ length: ml }, (_, i) => day(`${ym}-${pad(i + 1)}`)) },
+    ftl, wake,
+    world: [...(S.whide.includes('UTC') ? [] : [{ code: 'UTC', name: 'Zulu', tz: 'UTC', roster: false }]),
+      ...worldRows().map(r => ({ code: r.c, name: AP[r.c] ? AP[r.c][2] : r.c, tz: TZ[r.c], roster: !!r.auto }))].slice(0, 10),
+    sun: placeCodes('sun').map(c => ({ code: c, name: AP[c] ? AP[c][2] : c, tz: TZ[c] || 'Asia/Bangkok', days: sunDays(c) })),
+    wx, todos: items('todos'), shopping: items('shopping'), counts, lays };
 }
 var nativeT = 0;
 function pushNative() { const h = nativeH(); if (!h) return; clearTimeout(nativeT); nativeT = setTimeout(() => { try { h.postMessage(JSON.stringify(widgetPayload())); } catch (e) {} }, 300); }
@@ -2724,6 +2767,13 @@ window.axiomFromWidget = w => {
   if (!w || w.date !== todayISO() || !(w.ts > (S.water.ts || 0))) return;
   Object.assign(S.water, { date: w.date, n: Math.max(0, Math.min(30, w.n | 0)), goal: Math.max(4, Math.min(16, w.goal | 0)) || S.water.goal, ts: w.ts });
   lsSet('water', bodyOf('water')); renderWater();
+};
+window.axiomApplyOps = ops => {
+  if (!Array.isArray(ops)) return 0; let n = 0; const touched = new Set();
+  ops.forEach(o => { const k = o.list === 'shopping' ? 'shopping' : o.list === 'todos' ? 'todos' : null; if (!k) return;
+    const it = S[k].find(i => String(i.id) === String(o.id)); if (it && !!it.done !== !!o.done) { it.done = !!o.done; touched.add(k); n++; } });
+  touched.forEach(k => { save(k); renderList(k); });
+  return n;
 };
 if (nativeH()) { document.documentElement.classList.add('in-app'); pushNative(); setInterval(pushNative, 15 * 60e3); }
 

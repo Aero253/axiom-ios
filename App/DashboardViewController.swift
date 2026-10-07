@@ -67,6 +67,25 @@ final class DashboardViewController: UIViewController, WKScriptMessageHandler, W
 
     @objc private func becameActive() {
         if let w = Shared.load()?.water { sendWaterToPage(w) }
+        sendListTicksToPage()
+    }
+
+    /// Items ticked off on the To-do or Shopping widget: hand them to the dashboard, then forget them once it has them.
+    private func sendListTicksToPage() {
+        let ops = Shared.loadOps()
+        guard !ops.isEmpty, let data = try? JSONEncoder().encode(ops), let json = String(data: data, encoding: .utf8) else { return }
+        let newest = ops.map(\.ts).max() ?? 0
+        webView.evaluateJavaScript("window.axiomApplyOps ? window.axiomApplyOps(\(json)) : -1") { result, error in
+            guard error == nil, let n = result as? Int, n >= 0 else { return }
+            Shared.saveOps(Shared.loadOps().filter { $0.ts > newest })
+            WidgetCenter.shared.reloadAllTimelines()
+        }
+    }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        // the page has loaded: pass on anything the widgets changed while the app was closed
+        if let w = Shared.load()?.water { sendWaterToPage(w) }
+        sendListTicksToPage()
     }
 
     @objc private func wentToBackground() {

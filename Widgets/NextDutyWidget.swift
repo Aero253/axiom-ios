@@ -35,6 +35,7 @@ struct NextDutyView: View {
         if let p = entry.payload, let st = p.status(at: entry.date) {
             switch family {
             case .systemMedium: medium(p, st)
+            case .systemLarge: large(p, st)
             case .accessoryRectangular: rectangular(st)
             case .accessoryInline: inline(st)
             default: small(p, st)
@@ -122,6 +123,61 @@ struct NextDutyView: View {
         }
     }
 
+    /// A departure-board view of the whole duty: every sector with done / now / next.
+    @ViewBuilder
+    private func large(_ p: Payload, _ st: DutyStatus) -> some View {
+        let ms = entry.date.timeIntervalSince1970 * 1000
+        VStack(alignment: .leading, spacing: 8) {
+            topLine(p, st)
+            HStack(alignment: .lastTextBaseline) {
+                DotText(text: Fmt.countdown(st.target.timeIntervalSince(entry.date)), height: 34, showUnlit: true)
+                Spacer(minLength: 0)
+                VStack(alignment: .trailing, spacing: 1) {
+                    Text(headline(st)).font(Ax.mono(15, .bold))
+                    Caption(text: Fmt.day(st.duty.date))
+                }
+            }
+            Text(route(st.duty)).font(Ax.mono(12, .semibold)).lineLimit(1).minimumScaleFactor(0.6)
+            Rectangle().fill(Ax.ink.opacity(0.15)).frame(height: 1)
+            HStack {
+                Caption(text: "Flight").frame(width: 62, alignment: .leading)
+                Caption(text: "Route")
+                Spacer(minLength: 0)
+                Caption(text: "Dep").frame(width: 44, alignment: .trailing)
+                Caption(text: "Arr").frame(width: 44, alignment: .trailing)
+                Caption(text: "").frame(width: 40, alignment: .trailing)
+            }
+            if let legs = st.duty.legs, !legs.isEmpty {
+                ForEach(Array(legs.prefix(6).enumerated()), id: \.offset) { _, l in
+                    let done = (l.arrMs ?? 0) > 0 && (l.arrMs ?? 0) <= ms
+                    let now = (l.depMs ?? .infinity) <= ms && ms < (l.arrMs ?? 0)
+                    HStack {
+                        Text(l.flt ?? "—").font(Ax.mono(13, .bold)).frame(width: 62, alignment: .leading)
+                        Text("\(l.from) › \(l.to)").font(Ax.mono(13))
+                        Spacer(minLength: 0)
+                        Text(l.dep ?? "").font(Ax.mono(13)).frame(width: 44, alignment: .trailing)
+                        Text(l.arr ?? "").font(Ax.mono(13)).frame(width: 44, alignment: .trailing)
+                        Text(now ? "NOW" : done ? "DONE" : "")
+                            .font(Ax.mono(9, .bold))
+                            .foregroundStyle(now ? Ax.paper : .secondary)
+                            .padding(.horizontal, 4).padding(.vertical, 1)
+                            .background(Capsule().fill(now ? Ax.red : Color.clear))
+                            .frame(width: 40, alignment: .trailing)
+                    }
+                    .opacity(done ? 0.45 : 1)
+                }
+            } else {
+                Text("\(st.duty.what) \(st.duty.start ?? "")–\(st.duty.end ?? "")").font(Ax.mono(13, .bold))
+            }
+            Spacer(minLength: 0)
+            HStack {
+                Caption(text: "Report \(st.duty.start ?? "—")")
+                Spacer(minLength: 0)
+                Caption(text: "Off duty \(st.duty.end ?? "—")")
+            }
+        }
+    }
+
     @ViewBuilder
     private func rectangular(_ st: DutyStatus) -> some View {
         VStack(alignment: .leading, spacing: 1) {
@@ -160,6 +216,6 @@ struct NextDutyWidget: Widget {
         }
         .configurationDisplayName("Next duty")
         .description("Countdown to your next report, with the route. Turns yellow, then red, as report time gets close.")
-        .supportedFamilies([.systemSmall, .systemMedium, .accessoryRectangular, .accessoryInline])
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .accessoryRectangular, .accessoryInline])
     }
 }

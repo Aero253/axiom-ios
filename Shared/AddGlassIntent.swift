@@ -11,3 +11,24 @@ struct AddGlassIntent: AppIntent {
         return .result()
     }
 }
+
+/// The tick circles on the To-do and Shopping widgets.
+struct ToggleItemIntent: AppIntent {
+    static var title: LocalizedStringResource = "Tick off a list item"
+    static var description = IntentDescription("Marks an item on your Axiom to-do or shopping list as done, or not done.")
+
+    @Parameter(title: "List") var list: String
+    @Parameter(title: "Item") var item: String
+
+    init() {}
+
+    init(list: String, item: String) {
+        self.list = list
+        self.item = item
+    }
+
+    func perform() async throws -> some IntentResult {
+        Shared.toggle(list: list, id: item)
+        return .result()
+    }
+}

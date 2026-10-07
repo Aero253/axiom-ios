@@ -9,6 +9,8 @@ struct Leg: Codable, Hashable {
     var to: String
     var dep: String?
     var arr: String?
+    var depMs: Double?        // real departure instant, ms since 1970
+    var arrMs: Double?
 }
 
 struct Duty: Codable, Hashable {
@@ -22,6 +24,9 @@ struct Duty: Codable, Hashable {
     var flts: [String]
     var route: [String]
     var legs: [Leg]?
+    var coords: [[Double]?]?  // lat, lon for each stop on the route
+    var away: Bool?           // ends away from base (a night-stop)
+    var chip: String?
 
     var repDate: Date { Date(timeIntervalSince1970: rep / 1000) }
     var offDate: Date { Date(timeIntervalSince1970: off / 1000) }
@@ -34,6 +39,122 @@ struct Water: Codable, Hashable {
     var ts: Double            // when it last changed, ms since 1970
 }
 
+struct DayInfo: Codable, Hashable {
+    var date: String
+    var type: String
+    var chip: String
+    var start: String?
+    var end: String?
+    var txt: String
+    var plans: Int
+}
+
+struct MonthInfo: Codable {
+    var ym: String
+    var days: [DayInfo]
+}
+
+struct Limits: Codable {
+    var duty7: Double
+    var duty14: Double
+    var duty28: Double
+    var flight28: Double
+    var restHome: Double
+    var restAway: Double
+}
+
+struct FTL: Codable {
+    var duty7: Double
+    var duty14: Double
+    var duty28: Double
+    var flight28: Double
+    var lim: Limits
+    var at: Double
+    var lastOff: Double?
+    var lastAway: Bool?
+}
+
+struct WakePlan: Codable {
+    var rep: Double
+    var leave: Double
+    var alarm: Double
+    var bed: Double
+    var what: String
+    var flt: String?
+}
+
+struct WorldCity: Codable, Hashable {
+    var code: String
+    var name: String
+    var tz: String
+    var roster: Bool
+}
+
+struct SunDay: Codable, Hashable {
+    var d: String
+    var rise: Double?
+    var set: Double?
+}
+
+struct SunCity: Codable, Hashable {
+    var code: String
+    var name: String
+    var tz: String
+    var days: [SunDay]
+}
+
+struct WxNow: Codable, Hashable {
+    var t: Double
+    var cond: String
+    var text: String
+}
+
+struct WxDay: Codable, Hashable {
+    var d: String
+    var hi: Double
+    var lo: Double
+    var p: Double
+    var cond: String
+}
+
+struct WxCity: Codable, Hashable {
+    var code: String
+    var name: String
+    var lat: Double
+    var lon: Double
+    var tz: String
+    var current: WxNow?
+    var daily: [WxDay]
+}
+
+struct Weather: Codable {
+    var updatedAt: String
+    var cities: [WxCity]
+}
+
+struct ListItem: Codable, Hashable {
+    var id: String
+    var text: String
+    var done: Bool
+    var qty: String?
+}
+
+struct CountItem: Codable, Hashable {
+    var title: String
+    var date: String
+}
+
+struct Layover: Codable, Hashable {
+    var to: String
+    var name: String
+    var tz: String
+    var arr: Double
+    var hotel: String?
+    var room: String?
+    var pickup: String?
+    var pickupMs: Double?
+}
+
 struct Payload: Codable {
     var v: Int
     var at: Double
@@ -42,6 +163,26 @@ struct Payload: Codable {
     var duties: [Duty]
     var water: Water
     var theme: String?
+    // added in v2; all optional so an older save still opens
+    var days: [DayInfo]?
+    var month: MonthInfo?
+    var ftl: FTL?
+    var wake: WakePlan?
+    var world: [WorldCity]?
+    var sun: [SunCity]?
+    var wx: Weather?
+    var todos: [ListItem]?
+    var shopping: [ListItem]?
+    var counts: [CountItem]?
+    var lays: [Layover]?
+}
+
+/// A tick made on a list widget, waiting to be handed to the dashboard next time the app opens.
+struct ListOp: Codable, Hashable {
+    var list: String      // "todos" or "shopping"
+    var id: String
+    var done: Bool
+    var ts: Double
 }
 
 // MARK: - Shared storage between the app and the widgets
@@ -49,26 +190,87 @@ struct Payload: Codable {
 enum Shared {
     static let defaultGroup = "group.com.aero253.axiom"
 
-    /// SideStore and AltStore rename the app group when they sign the app and record the new name in
-    /// Info.plist under ALTAppGroups, so look there first (in this bundle and, for the widgets, in the app around them).
-    static var groupID: String {
+    /// Sideloading tools rename the app group when they sign the app (each adds its own suffix), so work out the real name:
+    /// first from the signing profile inside the app (it lists the groups this copy may use), then from the
+    /// ALTAppGroups note SideStore/AltStore leave in Info.plist, and only then fall back to the name we built with.
+    static let groupID: String = {
+        var candidates: [String] = []
         var bundles: [Bundle] = [Bundle.main]
         let url = Bundle.main.bundleURL
         if url.pathExtension == "appex" {
             let appURL = url.deletingLastPathComponent().deletingLastPathComponent()
             if let app = Bundle(url: appURL) { bundles.append(app) }
         }
+        for b in bundles { candidates += profileGroups(in: b) }
         for b in bundles {
-            if let groups = b.object(forInfoDictionaryKey: "ALTAppGroups") as? [String], let first = groups.first {
-                return first
-            }
+            if let groups = b.object(forInfoDictionaryKey: "ALTAppGroups") as? [String] { candidates += groups }
         }
-        return defaultGroup
+        candidates.append(defaultGroup)
+        let fm = FileManager.default
+        return candidates.first(where: { fm.containerURL(forSecurityApplicationGroupIdentifier: $0) != nil }) ?? defaultGroup
+    }()
+
+    /// The app groups listed in a bundle's embedded.mobileprovision (a signed plist; the XML sits inside it as plain text).
+    private static func profileGroups(in bundle: Bundle) -> [String] {
+        guard let url = bundle.url(forResource: "embedded", withExtension: "mobileprovision"),
+              let data = try? Data(contentsOf: url),
+              let start = data.range(of: Data("<?xml".utf8)),
+              let end = data.range(of: Data("</plist>".utf8), in: start.lowerBound..<data.endIndex) else { return [] }
+        let xml = data.subdata(in: start.lowerBound..<end.upperBound)
+        guard let plist = try? PropertyListSerialization.propertyList(from: xml, options: [], format: nil) as? [String: Any],
+              let ent = plist["Entitlements"] as? [String: Any],
+              let groups = ent["com.apple.security.application-groups"] as? [String] else { return [] }
+        return groups.filter { !$0.contains("*") }
     }
 
-    static var fileURL: URL? {
-        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupID)?
-            .appendingPathComponent("axiom-widgets.json")
+    static var container: URL? {
+        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupID)
+    }
+
+    static var fileURL: URL? { container?.appendingPathComponent("axiom-widgets.json") }
+    static var opsURL: URL? { container?.appendingPathComponent("axiom-list-ops.json") }
+    static var wxURL: URL? { container?.appendingPathComponent("axiom-weather.json") }
+
+    // MARK: ticks from the list widgets
+
+    static func loadOps() -> [ListOp] {
+        guard let url = opsURL, let data = try? Data(contentsOf: url) else { return [] }
+        return (try? JSONDecoder().decode([ListOp].self, from: data)) ?? []
+    }
+
+    static func saveOps(_ ops: [ListOp]) {
+        guard let url = opsURL, let data = try? JSONEncoder().encode(ops) else { return }
+        try? data.write(to: url, options: .atomic)
+    }
+
+    /// A list as the widget should show it: the dashboard's last save, with any ticks made since laid on top.
+    static func items(_ list: String, in p: Payload?) -> [ListItem] {
+        var items = (list == "shopping" ? p?.shopping : p?.todos) ?? []
+        for op in loadOps() where op.list == list {
+            if let i = items.firstIndex(where: { $0.id == op.id }) { items[i].done = op.done }
+        }
+        return items
+    }
+
+    static func toggle(list: String, id: String) {
+        let current = items(list, in: load())
+        guard let item = current.first(where: { $0.id == id }) else { return }
+        var ops = loadOps().filter { !($0.list == list && $0.id == id) }
+        ops.append(ListOp(list: list, id: id, done: !item.done, ts: Date().timeIntervalSince1970 * 1000))
+        saveOps(ops)
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    // MARK: weather the widget fetched itself
+
+    static func loadWeather() -> Weather? {
+        if let url = wxURL, let data = try? Data(contentsOf: url), let w = try? JSONDecoder().decode(Weather.self, from: data) { return w }
+        return load()?.wx
+    }
+
+    static func saveWeather(_ w: Weather) {
+        guard let url = wxURL, let data = try? JSONEncoder().encode(w) else { return }
+        try? data.write(to: url, options: .atomic)
     }
 
     static func load() -> Payload? {

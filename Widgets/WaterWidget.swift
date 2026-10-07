@@ -44,6 +44,20 @@ struct WaterView: View {
                 Text("\(w.n)")
             }
             .gaugeStyle(.accessoryCircularCapacity)
+        case .systemMedium:
+            HStack(spacing: 16) {
+                small(w).frame(width: 130)
+                VStack(alignment: .leading, spacing: 6) {
+                    Caption(text: "Water today")
+                    DotText(text: Fmt.litres(w.n), height: 20)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Caption(text: "of \(Fmt.litres(w.goal)) · \(w.goal) glasses")
+                    DotBar(value: Double(w.n), limit: Double(w.goal), count: 16, dot: 6)
+                    Spacer(minLength: 0)
+                    Caption(text: w.n >= w.goal ? "Goal reached" : "\(Fmt.litres(w.goal - w.n)) to go", color: Ax.ink)
+                    Caption(text: "Resets at midnight")
+                }
+            }
         default:
             small(w)
         }
@@ -104,6 +118,6 @@ struct WaterWidget: Widget {
         }
         .configurationDisplayName("Water")
         .description("Today's glasses. Tap + to add one without opening Axiom.")
-        .supportedFamilies([.systemSmall, .accessoryCircular])
+        .supportedFamilies([.systemSmall, .systemMedium, .accessoryCircular])
     }
 }

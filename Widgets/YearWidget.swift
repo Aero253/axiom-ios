@@ -83,6 +83,15 @@ struct YearView: View {
         let y = YearInfo(entry.date)
         switch family {
         case .systemMedium: medium(y)
+        case .accessoryCircular:
+            Gauge(value: y.fraction) {
+                Text("\(y.year)")
+            } currentValueLabel: {
+                Text("\(y.daysLeft)")
+            }
+            .gaugeStyle(.accessoryCircularCapacity)
+        case .accessoryInline:
+            Text("\(y.daysLeft) days left in \(y.year)")
         default: small(y)
         }
     }
@@ -159,6 +168,6 @@ struct YearWidget: Widget {
         }
         .configurationDisplayName("Year")
         .description("Days left this year, with every day of the year as a dot.")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .supportedFamilies([.systemSmall, .systemMedium, .accessoryCircular, .accessoryInline])
     }
 }
