@@ -32,7 +32,26 @@ struct AgendaView: View {
 
     private func row(_ d: DayInfo, first: Bool) -> some View {
         let (dow, num) = dayParts(d.date)
-        return HStack(spacing: 8) {
+        return Group {
+            if family == .systemLarge { tallRow(d, first: first, dow: dow, num: num) } else { shortRow(d, first: first, dow: dow, num: num) }
+        }
+    }
+
+    private func shortRow(_ d: DayInfo, first: Bool, dow: String, num: String) -> some View {
+        HStack(spacing: 8) {
+            Text(first ? "TODAY" : "\(dow) \(num)").font(Ax.mono(11, .bold)).foregroundStyle(first ? Ax.ink : .secondary)
+                .frame(width: 58, alignment: .leading)
+            Chip(text: d.chip.isEmpty ? "—" : d.chip, type: d.type, size: 10)
+                .frame(width: 66, alignment: .leading)
+            Text(d.start.map { "\($0)–\(d.end ?? "")" } ?? (d.txt.isEmpty ? "Nothing rostered" : d.txt))
+                .font(Ax.mono(11, .semibold)).lineLimit(1).minimumScaleFactor(0.8)
+            Spacer(minLength: 0)
+            if d.plans > 0 { Circle().fill(Ax.ink).frame(width: 6, height: 6) }
+        }
+    }
+
+    private func tallRow(_ d: DayInfo, first: Bool, dow: String, num: String) -> some View {
+        HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 0) {
                 Text(first ? "TODAY" : dow).font(Ax.mono(9, .bold)).foregroundStyle(first ? Ax.ink : .secondary)
                 Text(num).font(Ax.mono(15, .bold))
@@ -182,9 +201,12 @@ struct FlightProgressView: View {
 
     private func state(_ p: Payload) -> LegState? {
         let ms = entry.date.timeIntervalSince1970 * 1000
-        // on duty now, or the next duty
-        let duty = p.duties.first(where: { $0.rep <= ms && $0.off > ms }) ?? p.duties.filter { $0.rep > ms }.min(by: { $0.rep < $1.rep })
-        guard let d = duty, let legs = d.legs?.filter({ $0.depMs != nil && $0.arrMs != nil }), !legs.isEmpty else { return nil }
+        // the duty you're on, or the next one with sectors (standby and reserve days have none)
+        let timed: (Duty) -> [Leg] = { ($0.legs ?? []).filter { $0.depMs != nil && $0.arrMs != nil } }
+        let current = p.duties.first(where: { $0.rep <= ms && $0.off > ms && !timed($0).isEmpty })
+        let upcoming = p.duties.filter { $0.off > ms && !timed($0).isEmpty }.min(by: { $0.rep < $1.rep })
+        guard let d = current ?? upcoming else { return nil }
+        let legs = timed(d)
         for (i, l) in legs.enumerated() {
             let dep = l.depMs!, arr = l.arrMs!
             if ms >= dep && ms < arr {
@@ -226,7 +248,8 @@ struct FlightProgressView: View {
         let medium = family == .systemMedium
         VStack(alignment: .leading, spacing: medium ? 8 : 6) {
             HStack {
-                Caption(text: s.flying ? "In flight · sector \(s.index + 1) of \(s.total)" : "Next sector · \(s.index + 1) of \(s.total)",
+                Caption(text: medium ? (s.flying ? "In flight · sector \(s.index + 1) of \(s.total)" : "Next sector · \(s.index + 1) of \(s.total)")
+                                     : (s.flying ? "In flight \(s.index + 1)/\(s.total)" : "Next \(s.index + 1)/\(s.total)"),
                         color: s.flying ? Ax.ink : .secondary)
                 Spacer(minLength: 0)
                 ExampleTag(demo: p.demo)

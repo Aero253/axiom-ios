@@ -96,9 +96,9 @@ struct WorldClockView: View {
             let limit = family == .systemLarge ? 9 : family == .systemMedium ? 4 : 3
             VStack(alignment: .leading, spacing: family == .systemLarge ? 9 : 6) {
                 HStack {
-                    Caption(text: "World clock")
+                    Caption(text: family == .systemSmall ? "World" : "World clock")
                     Spacer(minLength: 0)
-                    Caption(text: "BKK \(TimeFmt.hm(entry.date))")
+                    if family != .systemSmall { Caption(text: "BKK \(TimeFmt.hm(entry.date))") }
                 }
                 ForEach(cities.prefix(limit), id: \.self) { c in
                     row(c)
@@ -116,9 +116,12 @@ struct WorldClockView: View {
         return HStack(alignment: .firstTextBaseline, spacing: 8) {
             VStack(alignment: .leading, spacing: 0) {
                 Text(c.code).font(Ax.mono(family == .systemSmall ? 12 : 13, .bold))
-                if family != .systemSmall {
+                if family == .systemLarge {
                     Text(c.name + (c.roster ? " · roster" : "")).font(Ax.mono(10)).foregroundStyle(.secondary).lineLimit(1)
                 }
+            }
+            if family == .systemMedium {
+                Text(c.name).font(Ax.mono(10)).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer(minLength: 4)
             if family != .systemSmall {

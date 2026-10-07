@@ -108,6 +108,11 @@ struct WeatherView: View {
         }
     }
 
+    private func temp(_ c: WxCity) -> String {
+        guard let t = c.current?.t ?? today(c)?.hi else { return "—" }
+        return "\(Int(t.rounded()))°"
+    }
+
     private func today(_ c: WxCity) -> WxDay? {
         let t = Shared.todayISO(entry.date)
         return c.daily.first(where: { $0.d >= t })
@@ -122,7 +127,7 @@ struct WeatherView: View {
             Spacer(minLength: 0)
             HStack(alignment: .center, spacing: 8) {
                 WxDots(cond: c.current?.cond ?? today(c)?.cond ?? "cloud", size: 40)
-                DotText(text: "\(Int((c.current?.t ?? today(c)?.hi ?? 0).rounded()))°", height: 26)
+                DotText(text: temp(c), height: 26)
             }
             Spacer(minLength: 0)
             Text(c.current?.text ?? "").font(Ax.mono(11, .semibold)).lineLimit(1).minimumScaleFactor(0.7)
@@ -166,7 +171,7 @@ struct WeatherView: View {
                     if let d = today(c) {
                         Text("rain \(Int(d.p))%").font(Ax.mono(10)).foregroundStyle(.secondary)
                     }
-                    Text("\(Int((c.current?.t ?? today(c)?.hi ?? 0).rounded()))°").font(Ax.mono(20, .bold)).frame(width: 52, alignment: .trailing)
+                    Text(temp(c)).font(Ax.mono(20, .bold)).frame(width: 52, alignment: .trailing)
                 }
             }
             Spacer(minLength: 0)

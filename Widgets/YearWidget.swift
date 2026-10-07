@@ -129,22 +129,24 @@ struct YearView: View {
                 Caption(text: "Day \(y.dayOfYear) of \(y.daysInYear)")
             }
             .frame(width: 104)
-            HStack(spacing: 4) {
-                VStack(spacing: 0) {
+            // month letters and day dots share one grid step, so every letter sits beside its own row
+            GeometryReader { g in
+                let step = min(g.size.width / 33, g.size.height / 12)
+                let gridRect = CGRect(x: step * 2, y: (g.size.height - step * 12) / 2, width: step * 31, height: step * 12)
+                ZStack(alignment: .topLeading) {
                     ForEach(Self.monthLetters.indices, id: \.self) { i in
                         Text(Self.monthLetters[i])
-                            .font(Ax.mono(7, i + 1 == y.month ? .bold : .regular))
+                            .font(Ax.mono(min(8, step * 0.9), i + 1 == y.month ? .bold : .regular))
                             .foregroundStyle(i + 1 == y.month ? Ax.ink : Color.secondary)
-                            .frame(maxHeight: .infinity)
+                            .position(x: step * 0.8, y: gridRect.minY + (CGFloat(i) + 0.5) * step)
                     }
-                }
-                .frame(width: 8)
-                ZStack {
                     YearGrid(info: y, kind: .toCome).fill(Ax.ink.opacity(0.16))
+                        .frame(width: gridRect.width, height: gridRect.height).offset(x: gridRect.minX, y: gridRect.minY)
                     YearGrid(info: y, kind: .gone).fill(Ax.ink)
+                        .frame(width: gridRect.width, height: gridRect.height).offset(x: gridRect.minX, y: gridRect.minY)
                     YearGrid(info: y, kind: .today).stroke(Ax.ink, lineWidth: 1.4)
+                        .frame(width: gridRect.width, height: gridRect.height).offset(x: gridRect.minX, y: gridRect.minY)
                 }
-                .aspectRatio(31.0 / 12.0, contentMode: .fit)
             }
         }
     }

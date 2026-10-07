@@ -55,7 +55,9 @@ struct NextDutyView: View {
     }
 
     private func route(_ d: Duty) -> String {
-        d.route.isEmpty ? (d.flts.first ?? d.what) : d.route.joined(separator: " › ")
+        if !d.route.isEmpty { return d.route.joined(separator: " › ") }
+        if let s = d.start, let e = d.end { return "\(s)–\(e)" }
+        return d.flts.first ?? ""
     }
 
     /// Yellow from 150 min before report, red from 35 min: the same windows as the dashboard ticker.
@@ -63,8 +65,8 @@ struct NextDutyView: View {
         guard !st.onDuty else { return nil }
         let left = st.target.timeIntervalSince(entry.date)
         guard left > 0, left <= 150 * 60 else { return nil }
-        if left <= 35 * 60 { return (true, "Go · \(Fmt.countdown(left))") }
-        return (false, "\(st.duty.what) in \(Fmt.countdown(left))")
+        if left <= 35 * 60 { return (true, "Go now") }
+        return (false, "Duty soon")
     }
 
     @ViewBuilder

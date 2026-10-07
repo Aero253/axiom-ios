@@ -26,10 +26,10 @@ struct DutyHoursView: View {
                         Spacer(minLength: 0)
                         ExampleTag(demo: entry.payload?.demo ?? false)
                     }
-                    row("Duty · 7 days", f.duty7, f.lim.duty7)
-                    row("Duty · 14 days", f.duty14, f.lim.duty14)
-                    row("Duty · 28 days", f.duty28, f.lim.duty28)
-                    row("Flight · 28 days", f.flight28, f.lim.flight28)
+                    row("Duty 7d", f.duty7, f.lim.duty7)
+                    row("Duty 14d", f.duty14, f.lim.duty14)
+                    row("Duty 28d", f.duty28, f.lim.duty28)
+                    row("Flight 28d", f.flight28, f.lim.flight28)
                     Spacer(minLength: 0)
                 }
             default:
@@ -44,7 +44,7 @@ struct DutyHoursView: View {
                     HStack {
                         Caption(text: "Flight 28d")
                         Spacer(minLength: 0)
-                        Text("\(TimeFmt.hours(f.flight28)) / \(Int(f.lim.flight28))").font(Ax.mono(11, .bold))
+                        Text("\(TimeFmt.hours(f.flight28))/\(Int(f.lim.flight28))").font(Ax.mono(11, .bold)).lineLimit(1).minimumScaleFactor(0.7)
                     }
                 }
             }
@@ -55,7 +55,7 @@ struct DutyHoursView: View {
 
     private func row(_ label: String, _ v: Double, _ lim: Double) -> some View {
         HStack(spacing: 8) {
-            Text(label).font(Ax.mono(10)).foregroundStyle(.secondary).frame(width: 96, alignment: .leading)
+            Text(label).font(Ax.mono(10)).foregroundStyle(.secondary).lineLimit(1).frame(width: 66, alignment: .leading)
             DotBar(value: v, limit: lim, count: 16, dot: 5.5)
             Spacer(minLength: 0)
             Text("\(TimeFmt.hours(v))/\(Int(lim))").font(Ax.mono(11, .bold)).foregroundStyle(v > lim ? Ax.red : Ax.ink)
@@ -234,13 +234,18 @@ struct LayoverView: View {
                 }
                 Spacer(minLength: 0)
                 if let h = l.hotel, !h.isEmpty {
-                    Text(h + (l.room.map { $0.isEmpty ? "" : " · room \($0)" } ?? "")).font(Ax.mono(11, .semibold)).lineLimit(2)
+                    Text(h + (l.room.map { $0.isEmpty ? "" : " · room \($0)" } ?? "")).font(Ax.mono(11, .semibold)).lineLimit(family == .systemMedium ? 2 : 1).minimumScaleFactor(0.8)
                 }
                 if let pm = l.pickupMs, pm > entry.date.timeIntervalSince1970 * 1000 {
-                    HStack {
-                        Caption(text: "Pickup \(l.pickup ?? "")")
-                        Spacer(minLength: 0)
-                        Text(Date(timeIntervalSince1970: pm / 1000), style: .timer).font(Ax.mono(12, .bold)).multilineTextAlignment(.trailing)
+                    if family == .systemMedium {
+                        HStack {
+                            Caption(text: "Pickup \(l.pickup ?? "") local")
+                            Spacer(minLength: 0)
+                            Text(Date(timeIntervalSince1970: pm / 1000), style: .timer).font(Ax.mono(12, .bold)).multilineTextAlignment(.trailing)
+                        }
+                    } else {
+                        Caption(text: "Pickup \(l.pickup ?? "") · in")
+                        Text(Date(timeIntervalSince1970: pm / 1000), style: .timer).font(Ax.mono(12, .bold))
                     }
                 } else if l.hotel == nil {
                     Caption(text: "Add the hotel and pickup in Axiom")

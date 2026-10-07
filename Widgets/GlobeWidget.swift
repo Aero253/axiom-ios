@@ -184,7 +184,7 @@ struct GlobeView: View {
 
     var body: some View {
         let p = entry.payload
-        let st = p?.status(at: entry.date)
+        let st = flyingStatus(p)
         let d = st?.duty
         let stops: [(String, Double, Double)] = {
             guard let d = d, let coords = d.coords else { return [] }
@@ -222,12 +222,26 @@ struct GlobeView: View {
         }
     }
 
+    /// The duty you're on if it flies, otherwise the next one with a route (standby days have no route to draw).
+    private func flyingStatus(_ p: Payload?) -> DutyStatus? {
+        guard let p = p else { return nil }
+        let ms = entry.date.timeIntervalSince1970 * 1000
+        let hasRoute: (Duty) -> Bool = { !($0.coords ?? []).compactMap { $0 }.isEmpty }
+        if let cur = p.duties.first(where: { $0.rep <= ms && $0.off > ms && hasRoute($0) }) {
+            return DutyStatus(duty: cur, onDuty: true, target: cur.offDate)
+        }
+        if let nx = p.duties.filter({ $0.rep > ms && hasRoute($0) }).min(by: { $0.rep < $1.rep }) {
+            return DutyStatus(duty: nx, onDuty: false, target: nx.repDate)
+        }
+        return p.status(at: entry.date)
+    }
+
     @ViewBuilder
     private func info(_ p: Payload?, _ st: DutyStatus?) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             if let st = st {
                 HStack {
-                    Caption(text: st.onDuty ? "On duty now" : "Next duty")
+                    Caption(text: st.onDuty ? "On duty now" : st.duty.route.isEmpty ? "Next duty" : "Next flight")
                     Spacer(minLength: 0)
                     ExampleTag(demo: p?.demo ?? false)
                 }
