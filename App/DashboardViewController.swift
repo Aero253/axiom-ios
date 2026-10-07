@@ -5,7 +5,7 @@ import WidgetKit
 /// Shows the Axiom dashboard (the same single HTML file, bundled in the app) full screen,
 /// and hands its next duties and water count to the Home Screen widgets.
 final class DashboardViewController: UIViewController, WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate {
-    private var webView: WKWebView!
+    var webView: WKWebView!   // internal so the in-app tests can read the page
     private var darkTheme = true
     private var downloads: [ObjectIdentifier: URL] = [:]
 

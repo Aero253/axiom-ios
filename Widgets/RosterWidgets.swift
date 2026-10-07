@@ -252,7 +252,7 @@ struct FlightProgressView: View {
                                      : (s.flying ? "In flight \(s.index + 1)/\(s.total)" : "Next \(s.index + 1)/\(s.total)"),
                         color: s.flying ? Ax.ink : .secondary)
                 Spacer(minLength: 0)
-                ExampleTag(demo: p.demo)
+                if medium { ExampleTag(demo: p.demo) }
             }
             Text(s.leg.flt ?? "Sector").font(Ax.mono(medium ? 18 : 15, .bold))
             // the route as a dotted line with the aircraft dot along it

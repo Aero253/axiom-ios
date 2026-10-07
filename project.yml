@@ -97,10 +97,26 @@ targets:
         excludes:
           - AxiomWidgets.swift
       - path: Tests
+        excludes:
+          - "App"
+          - "App/**"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.aero253.axiom.tests
         GENERATE_INFOPLIST_FILE: "YES"
+  AxiomAppTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests/App
+    dependencies:
+      - target: Axiom
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.aero253.axiom.apptests
+        GENERATE_INFOPLIST_FILE: "YES"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Axiom.app/Axiom"
+        BUNDLE_LOADER: "$(TEST_HOST)"
 schemes:
   Axiom:
     build:
@@ -115,7 +131,10 @@ schemes:
     build:
       targets:
         AxiomTests: all
+        AxiomAppTests: all
+        Axiom: all
     test:
       config: Debug
       targets:
         - AxiomTests
+        - AxiomAppTests
