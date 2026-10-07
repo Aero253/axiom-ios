@@ -3,10 +3,12 @@ import WidgetKit
 
 // MARK: - The dashboard's dot-matrix globe, with your next route drawn in red
 
+private final class LandBundleToken {}
+
 /// Natural Earth land at 0.5° (public domain), the same bitmap the dashboard uses: 720 × 360 cells, one bit each.
 enum LandMask {
     static let bits: [UInt8] = {
-        guard let url = Bundle.main.url(forResource: "land05", withExtension: "dat"),
+        guard let url = Bundle(for: LandBundleToken.self).url(forResource: "land05", withExtension: "dat"),
               let d = try? Data(contentsOf: url) else { return [] }
         return [UInt8](d)
     }()
@@ -175,7 +177,9 @@ struct GlobePicture: View {
 }
 
 struct GlobeView: View {
-    @Environment(\.widgetFamily) private var family
+    @Environment(\.widgetFamily) var envFamily
+    var forcedFamily: WidgetFamily? = nil
+    private var family: WidgetFamily { forcedFamily ?? envFamily }
     let entry: DutyEntry
 
     var body: some View {

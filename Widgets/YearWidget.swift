@@ -74,7 +74,9 @@ struct YearGrid: Shape {
 }
 
 struct YearView: View {
-    @Environment(\.widgetFamily) private var family
+    @Environment(\.widgetFamily) var envFamily
+    var forcedFamily: WidgetFamily? = nil
+    private var family: WidgetFamily { forcedFamily ?? envFamily }
     let entry: YearEntry
 
     private static let monthLetters: [String] = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"]

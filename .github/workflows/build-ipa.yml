@@ -82,3 +82,36 @@ jobs:
           grep -E "error:|warning: unreachable" build.log | sed "s#$GITHUB_WORKSPACE/##" | sort -u > build-errors.txt || true
           gh release delete build-log --yes --cleanup-tag || true
           gh release create build-log build.log build-errors.txt --prerelease --title "Last failed build log" --notes "Errors from ${GITHUB_SHA::7}."
+
+  previews:
+    # draws every widget at every size from real dashboard data and checks the data and storage logic
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Make the Xcode project
+        run: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Test and draw the widgets
+        run: |
+          SIM=$(xcrun simctl list devices available | grep -E "^\s+iPhone 1[5-7]" | head -1 | sed -E 's/^ +(.*) \(([0-9A-F-]+)\).*/\2/')
+          echo "Simulator: $SIM"
+          mkdir -p previews
+          TEST_RUNNER_PREVIEW_DIR="$PWD/previews" xcodebuild test \
+            -project Axiom.xcodeproj -scheme AxiomTests \
+            -destination "id=$SIM" \
+            CODE_SIGNING_ALLOWED=NO > test.log 2>&1 || { grep -E "error:|failed|XCTAssert" test.log | sed "s#$GITHUB_WORKSPACE/##" | sort -u | head -40 | while IFS= read -r l; do echo "::error::$l"; done; FAILED=1; }
+          grep -E "Test Case .* (passed|failed)|Executed" test.log | tail -12 || true
+          ls previews | head -100
+          test -z "$FAILED"
+      - name: Publish the pictures and test log as the "widget-previews" release
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test -f test.log || echo "no test log" > test.log
+          grep -E "error:|Test Case|Executed|XCTAssert" test.log | sed "s#$GITHUB_WORKSPACE/##" > test-summary.txt || true
+          (cd previews 2>/dev/null && zip -qr ../widget-previews.zip .) || echo "no pictures" > widget-previews.zip
+          gh release delete widget-previews --yes --cleanup-tag || true
+          gh release create widget-previews widget-previews.zip test-summary.txt --prerelease --title "Widget previews" --notes "Every widget drawn from real dashboard data, ${GITHUB_SHA::7}."

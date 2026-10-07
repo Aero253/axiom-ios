@@ -91,7 +91,9 @@ struct WxProvider: TimelineProvider {
 }
 
 struct WeatherView: View {
-    @Environment(\.widgetFamily) private var family
+    @Environment(\.widgetFamily) var envFamily
+    var forcedFamily: WidgetFamily? = nil
+    private var family: WidgetFamily { forcedFamily ?? envFamily }
     let entry: WxEntry
 
     var body: some View {
@@ -186,7 +188,9 @@ struct WeatherWidget: Widget {
 // MARK: - Sun: sunrise and sunset in local time
 
 struct SunView: View {
-    @Environment(\.widgetFamily) private var family
+    @Environment(\.widgetFamily) var envFamily
+    var forcedFamily: WidgetFamily? = nil
+    private var family: WidgetFamily { forcedFamily ?? envFamily }
     let entry: PayloadEntry
 
     var body: some View {

@@ -4,7 +4,9 @@ import WidgetKit
 // MARK: - Duty hours (FTL): rolling totals against the limits
 
 struct DutyHoursView: View {
-    @Environment(\.widgetFamily) private var family
+    @Environment(\.widgetFamily) var envFamily
+    var forcedFamily: WidgetFamily? = nil
+    private var family: WidgetFamily { forcedFamily ?? envFamily }
     let entry: PayloadEntry
 
     var body: some View {
@@ -137,7 +139,9 @@ struct RestWidget: Widget {
 // MARK: - Wake-up: alarm, bedtime and leaving time for the next report
 
 struct WakeView: View {
-    @Environment(\.widgetFamily) private var family
+    @Environment(\.widgetFamily) var envFamily
+    var forcedFamily: WidgetFamily? = nil
+    private var family: WidgetFamily { forcedFamily ?? envFamily }
     let entry: PayloadEntry
 
     var body: some View {
@@ -201,7 +205,9 @@ struct WakeWidget: Widget {
 // MARK: - Layover: the night-stop city, its local time, hotel and pickup
 
 struct LayoverView: View {
-    @Environment(\.widgetFamily) private var family
+    @Environment(\.widgetFamily) var envFamily
+    var forcedFamily: WidgetFamily? = nil
+    private var family: WidgetFamily { forcedFamily ?? envFamily }
     let entry: PayloadEntry
 
     var body: some View {

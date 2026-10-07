@@ -23,7 +23,9 @@ struct MinuteProvider: TimelineProvider {
 }
 
 struct ClockView: View {
-    @Environment(\.widgetFamily) private var family
+    @Environment(\.widgetFamily) var envFamily
+    var forcedFamily: WidgetFamily? = nil
+    private var family: WidgetFamily { forcedFamily ?? envFamily }
     let entry: MinuteEntry
 
     var body: some View {
@@ -81,7 +83,9 @@ struct ClockWidget: Widget {
 // MARK: - World clock: your cities from the dashboard, live
 
 struct WorldClockView: View {
-    @Environment(\.widgetFamily) private var family
+    @Environment(\.widgetFamily) var envFamily
+    var forcedFamily: WidgetFamily? = nil
+    private var family: WidgetFamily { forcedFamily ?? envFamily }
     let entry: PayloadEntry
 
     var body: some View {

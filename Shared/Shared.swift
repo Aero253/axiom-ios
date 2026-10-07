@@ -202,6 +202,9 @@ enum Shared {
             if let app = Bundle(url: appURL) { bundles.append(app) }
         }
         for b in bundles { candidates += profileGroups(in: b) }
+        // iloader registers group.<app ID>, where the app ID is the bundle ID with the team ID added
+        if let app = bundles.last?.bundleIdentifier { candidates.append("group." + app) }
+        if let me = Bundle.main.bundleIdentifier, me.hasSuffix(".widgets") { candidates.append("group." + String(me.dropLast(".widgets".count))) }
         for b in bundles {
             if let groups = b.object(forInfoDictionaryKey: "ALTAppGroups") as? [String] { candidates += groups }
         }
@@ -213,8 +216,12 @@ enum Shared {
     /// The app groups listed in a bundle's embedded.mobileprovision (a signed plist; the XML sits inside it as plain text).
     private static func profileGroups(in bundle: Bundle) -> [String] {
         guard let url = bundle.url(forResource: "embedded", withExtension: "mobileprovision"),
-              let data = try? Data(contentsOf: url),
-              let start = data.range(of: Data("<?xml".utf8)),
+              let data = try? Data(contentsOf: url) else { return [] }
+        return profileGroups(data: data)
+    }
+
+    static func profileGroups(data: Data) -> [String] {
+        guard let start = data.range(of: Data("<?xml".utf8)),
               let end = data.range(of: Data("</plist>".utf8), in: start.lowerBound..<data.endIndex) else { return [] }
         let xml = data.subdata(in: start.lowerBound..<end.upperBound)
         guard let plist = try? PropertyListSerialization.propertyList(from: xml, options: [], format: nil) as? [String: Any],

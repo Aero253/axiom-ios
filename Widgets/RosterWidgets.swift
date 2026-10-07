@@ -4,7 +4,9 @@ import WidgetKit
 // MARK: - Next 7 days
 
 struct AgendaView: View {
-    @Environment(\.widgetFamily) private var family
+    @Environment(\.widgetFamily) var envFamily
+    var forcedFamily: WidgetFamily? = nil
+    private var family: WidgetFamily { forcedFamily ?? envFamily }
     let entry: PayloadEntry
 
     var body: some View {
@@ -66,7 +68,9 @@ struct AgendaWidget: Widget {
 // MARK: - Month calendar with duty chips
 
 struct MonthView: View {
-    @Environment(\.widgetFamily) private var family
+    @Environment(\.widgetFamily) var envFamily
+    var forcedFamily: WidgetFamily? = nil
+    private var family: WidgetFamily { forcedFamily ?? envFamily }
     let entry: PayloadEntry
 
     var body: some View {
@@ -162,7 +166,9 @@ struct MonthWidget: Widget {
 // MARK: - Flight progress: where you are in today's sectors
 
 struct FlightProgressView: View {
-    @Environment(\.widgetFamily) private var family
+    @Environment(\.widgetFamily) var envFamily
+    var forcedFamily: WidgetFamily? = nil
+    private var family: WidgetFamily { forcedFamily ?? envFamily }
     let entry: DutyEntry
 
     private struct LegState {

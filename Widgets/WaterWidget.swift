@@ -31,7 +31,9 @@ struct WaterProvider: TimelineProvider {
 }
 
 struct WaterView: View {
-    @Environment(\.widgetFamily) private var family
+    @Environment(\.widgetFamily) var envFamily
+    var forcedFamily: WidgetFamily? = nil
+    private var family: WidgetFamily { forcedFamily ?? envFamily }
     let entry: WaterEntry
 
     var body: some View {

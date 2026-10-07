@@ -88,6 +88,19 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.aero253.axiom.widgets
         PRODUCT_NAME: AxiomWidgets
         SKIP_INSTALL: "YES"
+  AxiomTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Shared
+      - path: Widgets
+        excludes:
+          - AxiomWidgets.swift
+      - path: Tests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.aero253.axiom.tests
+        GENERATE_INFOPLIST_FILE: "YES"
 schemes:
   Axiom:
     build:
@@ -98,3 +111,11 @@ schemes:
       config: Debug
     archive:
       config: Release
+  AxiomTests:
+    build:
+      targets:
+        AxiomTests: all
+    test:
+      config: Debug
+      targets:
+        - AxiomTests

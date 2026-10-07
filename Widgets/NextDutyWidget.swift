@@ -28,7 +28,9 @@ struct DutyProvider: TimelineProvider {
 }
 
 struct NextDutyView: View {
-    @Environment(\.widgetFamily) private var family
+    @Environment(\.widgetFamily) var envFamily
+    var forcedFamily: WidgetFamily? = nil
+    private var family: WidgetFamily { forcedFamily ?? envFamily }
     let entry: DutyEntry
 
     var body: some View {

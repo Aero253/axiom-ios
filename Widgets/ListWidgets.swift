@@ -5,7 +5,9 @@ import AppIntents
 // MARK: - To-do and Shopping: tick items off right on the Home Screen
 
 struct ListView: View {
-    @Environment(\.widgetFamily) private var family
+    @Environment(\.widgetFamily) var envFamily
+    var forcedFamily: WidgetFamily? = nil
+    private var family: WidgetFamily { forcedFamily ?? envFamily }
     let entry: PayloadEntry
     let list: String          // "todos" or "shopping"
     let title: String
@@ -83,7 +85,9 @@ struct ShoppingWidget: Widget {
 // MARK: - Countdown: days to leave, a trip home, a birthday
 
 struct CountdownView: View {
-    @Environment(\.widgetFamily) private var family
+    @Environment(\.widgetFamily) var envFamily
+    var forcedFamily: WidgetFamily? = nil
+    private var family: WidgetFamily { forcedFamily ?? envFamily }
     let entry: PayloadEntry
 
     private func days(_ iso: String) -> Int {
