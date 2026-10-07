@@ -34,7 +34,7 @@ jobs:
             -destination 'generic/platform=iOS' \
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
-            build > build.log 2>&1 || { grep -E "error:" build.log | head -100; tail -40 build.log; exit 1; }
+            build > build.log 2>&1 || { grep -E "error:" build.log | sed "s#$GITHUB_WORKSPACE/##" | sort -u | head -40 | while IFS= read -r l; do echo "::error::$l"; done; tail -40 build.log; exit 1; }
           grep -E "warning: .*deprecated|BUILD SUCCEEDED" build.log || true
           test -f build/Build/Products/Release-iphoneos/Axiom.app/Axiom
           test -f build/Build/Products/Release-iphoneos/Axiom.app/PlugIns/AxiomWidgets.appex/AxiomWidgets
@@ -72,3 +72,13 @@ jobs:
           gh release delete latest --yes --cleanup-tag || true
           gh release create latest Axiom.ipa --title "Axiom for iPhone" \
             --notes "Built from ${GITHUB_SHA::7}. Download Axiom.ipa on your iPhone, then open it in SideStore or AltStore."
+
+      - name: On a failed build, publish the log as the "build-log" release so it can be read without the Actions log viewer
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test -f build.log || echo "no build log" > build.log
+          grep -E "error:|warning: unreachable" build.log | sed "s#$GITHUB_WORKSPACE/##" | sort -u > build-errors.txt || true
+          gh release delete build-log --yes --cleanup-tag || true
+          gh release create build-log build.log build-errors.txt --prerelease --title "Last failed build log" --notes "Errors from ${GITHUB_SHA::7}."
