@@ -8,6 +8,7 @@ final class DashboardViewController: UIViewController, WKScriptMessageHandler, W
     var webView: WKWebView!   // internal so the in-app tests can read the page
     private var darkTheme = true
     private var downloads: [ObjectIdentifier: URL] = [:]
+    private let tick = UISelectionFeedbackGenerator()
 
     override var preferredStatusBarStyle: UIStatusBarStyle { darkTheme ? .lightContent : .darkContent }
 
@@ -54,7 +55,13 @@ final class DashboardViewController: UIViewController, WKScriptMessageHandler, W
         if message.name == "axiomAlarm" {
             guard let text = message.body as? String, let data = text.data(using: .utf8),
                   let cmd = try? JSONSerialization.jsonObject(with: data) as? [String: String],
-                  let action = cmd["action"], let id = cmd["id"].flatMap(UUID.init(uuidString:)) else { return }
+                  let action = cmd["action"] else { return }
+            if action == "tick" {   // a light click as the time drums turn, like the iPhone's own picker
+                tick.selectionChanged()
+                tick.prepare()
+                return
+            }
+            guard let id = cmd["id"].flatMap(UUID.init(uuidString:)) else { return }
             AlarmScheduler.shared.handle(action: action, id: id)
             return
         }
