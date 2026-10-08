@@ -61,6 +61,20 @@ final class DashboardViewController: UIViewController, WKScriptMessageHandler, W
         Shared.save(incoming)
         WidgetCenter.shared.reloadAllTimelines()
         applyTheme(incoming.theme)
+        if let alarms = incoming.alarms { syncAlarms(alarms) }
+    }
+
+    // MARK: - Alarm clock: the dashboard's alarms go to iOS, which rings them even with the app closed
+
+    private func syncAlarms(_ set: AlarmSet) {
+        AlarmScheduler.shared.sync(set) { [weak self] status in
+            self?.sendAlarmStatusToPage(status)
+        }
+    }
+
+    private func sendAlarmStatusToPage(_ status: AlarmStatus) {
+        guard let data = try? JSONEncoder().encode(status), let json = String(data: data, encoding: .utf8) else { return }
+        webView.evaluateJavaScript("window.axiomAlarmStatus && window.axiomAlarmStatus(\(json))", completionHandler: nil)
     }
 
     // MARK: - Widgets → dashboard
@@ -68,6 +82,8 @@ final class DashboardViewController: UIViewController, WKScriptMessageHandler, W
     @objc private func becameActive() {
         if let w = Shared.load()?.water { sendWaterToPage(w) }
         sendListTicksToPage()
+        // alarms allowed or turned off in Settings since last time
+        if let a = Shared.load()?.alarms { syncAlarms(a) }
     }
 
     /// Items ticked off on the To-do or Shopping widget: hand them to the dashboard, then forget them once it has them.

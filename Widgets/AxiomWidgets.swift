@@ -29,5 +29,17 @@ struct MoreAxiomWidgets: WidgetBundle {
         TodoWidget()
         ShoppingWidget()
         CountdownWidget()
+        AlarmWidgets().body
+    }
+}
+
+struct AlarmWidgets: WidgetBundle {
+    var body: some Widget {
+        AlarmWidget()
+        #if canImport(AlarmKit)
+        if #available(iOS 26.0, *) {
+            AlarmLiveActivity()
+        }
+        #endif
     }
 }

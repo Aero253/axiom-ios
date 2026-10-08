@@ -156,8 +156,14 @@ struct WakeView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             default:
                 VStack(alignment: .leading, spacing: 5) {
-                    HStack {
-                        Caption(text: "Alarm")
+                    HStack(spacing: 4) {
+                        // a bell when Axiom's alarm clock is set to ring at this time
+                        if entry.payload?.alarms?.list.contains(where: { $0.at == w.alarm }) == true {
+                            Image(systemName: "alarm.fill").font(.system(size: 10, weight: .bold))
+                            Caption(text: "Alarm set")
+                        } else {
+                            Caption(text: "Alarm")
+                        }
                         Spacer(minLength: 0)
                         if let f = w.flt { Caption(text: f) }
                     }

@@ -48,4 +48,29 @@ final class AppBridgeTests: XCTestCase {
         // the app passes the tick to the dashboard and clears its queue once the dashboard has it
         waitFor(20, "the tick queue to be handed over") { Shared.loadOps().isEmpty }
     }
+
+    func testAlarmClockRoundTrip() throws {
+        waitFor(30, "the dashboard's first hand-off") { Shared.load() != nil }
+        XCTAssertNotNil(Shared.load()?.alarms, "the dashboard hands over its alarms")
+        // the app tells the dashboard how iOS will ring them
+        let web = try XCTUnwrap((UIApplication.shared.delegate as? AppDelegate)?.window?.rootViewController as? DashboardViewController).webView!
+        var note = ""
+        waitFor(20, "the alarm status to reach the dashboard") {
+            web.evaluateJavaScript("document.querySelector('#alNote').textContent") { r, _ in note = (r as? String) ?? "" }
+            return note.contains("Clock app") || note.contains("notification")
+        }
+        if #available(iOS 26.0, *) { XCTAssertTrue(note.contains("Clock app"), "AlarmKit on iOS 26: \(note)") }
+    }
+
+    func testAlarmIDs() {
+        let a = AlarmItem(key: "d1", at: 1_800_000_000_000, h: nil, m: nil, days: nil, title: "Flight SL770", sub: "Report 06:00")
+        var b = a
+        XCTAssertEqual(AlarmScheduler.id(for: a, snooze: 9), AlarmScheduler.id(for: b, snooze: 9), "the same alarm keeps its ID")
+        b.at = 1_800_000_060_000
+        XCTAssertNotEqual(AlarmScheduler.id(for: a, snooze: 9), AlarmScheduler.id(for: b, snooze: 9), "a moved alarm gets a new one")
+        XCTAssertNotEqual(AlarmScheduler.id(for: a, snooze: 9), AlarmScheduler.id(for: a, snooze: 5), "so does a new snooze length")
+        let set = AlarmSet(on: true, snooze: 9, list: [a, AlarmItem(key: "d0", at: 1000, h: nil, m: nil, days: nil, title: "old", sub: nil),
+                                                       AlarmItem(key: "m1", at: nil, h: 6, m: 30, days: [1], title: "Gym", sub: nil)])
+        XCTAssertEqual(AlarmScheduler.upcoming(set).map(\.key), ["d1", "m1"], "past alarms are left out")
+    }
 }

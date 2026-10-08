@@ -175,6 +175,51 @@ struct Payload: Codable {
     var shopping: [ListItem]?
     var counts: [CountItem]?
     var lays: [Layover]?
+    var alarms: AlarmSet?     // added in 1.2: what the alarm clock should ring
+}
+
+// MARK: - Alarm clock
+
+/// One alarm from the dashboard: either a moment (`at`, a duty alarm or a one-off) or a clock time that repeats on weekdays.
+struct AlarmItem: Codable, Hashable {
+    var key: String
+    var at: Double?          // ms since 1970
+    var h: Int?
+    var m: Int?
+    var days: [Int]?         // 0 = Sunday … 6 = Saturday, as in JavaScript
+    var title: String
+    var sub: String?
+
+    /// The next time this rings after `date`, on this phone's clock.
+    func next(after date: Date, calendar: Calendar = .current) -> Date? {
+        if let at = at {
+            let d = Date(timeIntervalSince1970: at / 1000)
+            return d > date ? d : nil
+        }
+        guard let h = h, let m = m else { return nil }
+        let start = calendar.startOfDay(for: date)
+        for i in 0..<8 {
+            guard let day = calendar.date(byAdding: .day, value: i, to: start),
+                  let c = calendar.date(bySettingHour: h, minute: m, second: 0, of: day) else { continue }
+            let wd = calendar.component(.weekday, from: c) - 1
+            if c > date && ((days ?? []).isEmpty || (days ?? []).contains(wd)) { return c }
+        }
+        return nil
+    }
+
+    /// Duty alarms are set from the roster; the rest are the ones you added yourself.
+    var isDuty: Bool { key.hasPrefix("d") }
+}
+
+struct AlarmSet: Codable, Hashable {
+    var on: Bool?
+    var snooze: Int
+    var list: [AlarmItem]
+
+    /// The next alarm to ring after `date`, with when it rings.
+    func next(after date: Date) -> (item: AlarmItem, at: Date)? {
+        list.compactMap { i in i.next(after: date).map { (i, $0) } }.min { $0.1 < $1.1 }
+    }
 }
 
 /// A tick made on a list widget, waiting to be handed to the dashboard next time the app opens.

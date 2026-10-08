@@ -35,6 +35,7 @@ final class WidgetPreviewTests: XCTestCase {
         XCTAssertFalse(payload.todos?.isEmpty ?? true, "to-do")
         XCTAssertFalse(payload.counts?.isEmpty ?? true, "countdowns")
         XCTAssertNotNil(payload.status(at: now), "a next duty")
+        XCTAssertFalse(payload.alarms?.list.isEmpty ?? true, "alarms")
         XCTAssertTrue(payload.duties.contains { !($0.coords ?? []).isEmpty }, "route coordinates for the globe")
         XCTAssertTrue(payload.duties.contains { ($0.legs ?? []).contains { $0.depMs != nil } }, "leg times for flight progress")
     }
@@ -66,6 +67,24 @@ final class WidgetPreviewTests: XCTestCase {
     func testListTicksLayOverTheList() {
         let items = Shared.items("todos", in: payload)
         XCTAssertEqual(items.count, payload.todos?.count)
+    }
+
+    func testAlarmTimes() throws {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "Asia/Bangkok")!
+        // Thursday 8 Oct 2026, 20:00 in Bangkok
+        let thu = try XCTUnwrap(cal.date(from: DateComponents(year: 2026, month: 10, day: 8, hour: 20)))
+        let gym = AlarmItem(key: "m1", at: nil, h: 6, m: 30, days: [1, 3, 5], title: "Gym", sub: nil)   // Mon Wed Fri
+        let next = try XCTUnwrap(gym.next(after: thu, calendar: cal))
+        XCTAssertEqual(cal.component(.weekday, from: next), 6, "Friday")
+        XCTAssertEqual(cal.component(.hour, from: next), 6)
+        XCTAssertEqual(cal.component(.minute, from: next), 30)
+        let daily = AlarmItem(key: "m2", at: nil, h: 21, m: 0, days: [], title: "Once", sub: nil)
+        XCTAssertEqual(daily.next(after: thu, calendar: cal).map { cal.component(.day, from: $0) }, 8, "later the same evening")
+        let past = AlarmItem(key: "d1", at: (thu.timeIntervalSince1970 - 60) * 1000, h: nil, m: nil, days: nil, title: "Duty", sub: nil)
+        XCTAssertNil(past.next(after: thu), "a duty alarm that has gone off doesn't come back")
+        let set = AlarmSet(on: true, snooze: 9, list: [gym, daily, past])
+        XCTAssertEqual(set.next(after: thu)?.item.key, "m2")
     }
 
     // MARK: pictures
@@ -163,6 +182,15 @@ final class WidgetPreviewTests: XCTestCase {
         draw("21-countdown-small", small) { CountdownView(forcedFamily: .systemSmall, entry: pe) }
         draw("21-countdown-medium", medium) { CountdownView(forcedFamily: .systemMedium, entry: pe) }
         draw("21-countdown-lock-rect", rect, accessory: true) { CountdownView(forcedFamily: .accessoryRectangular, entry: pe) }
+
+        // alarm clock
+        draw("22-alarm-small", small) { AlarmView(forcedFamily: .systemSmall, entry: pe) }
+        draw("22-alarm-small-later", small) { AlarmView(forcedFamily: .systemSmall, entry: PayloadEntry(date: now.addingTimeInterval(86400), payload: payload)) }
+        draw("22-alarm-lock-rect", rect, accessory: true) { AlarmView(forcedFamily: .accessoryRectangular, entry: pe) }
+        draw("22-alarm-lock-inline", inline, accessory: true) { AlarmView(forcedFamily: .accessoryInline, entry: pe) }
+        draw("23-snooze-lock-screen", CGSize(width: 364, height: 96), accessory: true) {
+            SnoozeCard(title: "Flight SL770", sub: "Report 06:00", fireDate: nil, remaining: 8 * 60 + 41).background(Color.black)
+        }
 
         // before Axiom has ever been opened
         let empty = PayloadEntry(date: now, payload: nil)
