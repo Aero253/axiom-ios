@@ -52,9 +52,12 @@ final class AlarmScheduler {
 
     /// A stable ID for one alarm as it is now: the same alarm keeps its ID, a changed one gets a new ID (and the old one goes).
     nonisolated static func id(for item: AlarmItem, snooze: Int) -> UUID {
-        let days = (item.days ?? []).sorted().map(String.init).joined(separator: ",")
-        let sig = [item.key, item.at.map { String(Int64($0)) } ?? "", item.h.map(String.init) ?? "", item.m.map(String.init) ?? "",
-                   days, item.title, item.sub ?? "", String(snooze)].joined(separator: "|")
+        let days: String = (item.days ?? []).sorted().map { String($0) }.joined(separator: ",")
+        let at: String = item.at.map { String(Int64($0)) } ?? ""
+        let h: String = item.h.map { String($0) } ?? ""
+        let m: String = item.m.map { String($0) } ?? ""
+        let parts: [String] = [item.key, at, h, m, days, item.title, item.sub ?? "", String(snooze)]
+        let sig = parts.joined(separator: "|")
         var b = Array(SHA256.hash(data: Data(sig.utf8)).prefix(16))
         b[6] = (b[6] & 0x0F) | 0x50     // a name-based UUID
         b[8] = (b[8] & 0x3F) | 0x80
