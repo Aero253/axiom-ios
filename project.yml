@@ -50,7 +50,7 @@ targets:
           - UIInterfaceOrientationLandscapeRight
         ITSAppUsesNonExemptEncryption: false
         LSSupportsOpeningDocumentsInPlace: false
-        NSAlarmKitUsageDescription: Axiom rings your duty alarms and the alarms you set, even when your iPhone is locked or on silent.
+        NSAlarmKitUsageDescription: Axiom rings the alarms you set, even when your iPhone is locked or on silent.
         NSSupportsLiveActivities: true
     entitlements:
       path: App/Axiom.entitlements
@@ -80,6 +80,8 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
+        UIAppFonts:
+          - AxiomDots.ttf
     entitlements:
       path: Widgets/AxiomWidgets.entitlements
       properties:

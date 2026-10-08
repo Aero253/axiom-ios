@@ -1,4 +1,6 @@
 import XCTest
+import CoreText
+import UIKit
 import SwiftUI
 import WidgetKit
 
@@ -19,6 +21,9 @@ final class WidgetPreviewTests: XCTestCase {
         let url = try XCTUnwrap(Bundle(for: WidgetPreviewTests.self).url(forResource: "payload", withExtension: "json"))
         payload = try JSONDecoder().decode(Payload.self, from: Data(contentsOf: url))
         now = Date(timeIntervalSince1970: payload.at / 1000)
+        if let font = Bundle(for: WidgetPreviewTests.self).url(forResource: "AxiomDots", withExtension: "ttf") {
+            CTFontManagerRegisterFontsForURL(font as CFURL, .process, nil)
+        }
     }
 
     // MARK: data
@@ -36,6 +41,7 @@ final class WidgetPreviewTests: XCTestCase {
         XCTAssertFalse(payload.counts?.isEmpty ?? true, "countdowns")
         XCTAssertNotNil(payload.status(at: now), "a next duty")
         XCTAssertFalse(payload.alarms?.list.isEmpty ?? true, "alarms")
+        XCTAssertNotNil(UIFont(name: "AxiomDots-Regular", size: 20), "the dot font for the snooze countdown")
         XCTAssertTrue(payload.duties.contains { !($0.coords ?? []).isEmpty }, "route coordinates for the globe")
         XCTAssertTrue(payload.duties.contains { ($0.legs ?? []).contains { $0.depMs != nil } }, "leg times for flight progress")
     }
@@ -189,7 +195,7 @@ final class WidgetPreviewTests: XCTestCase {
         draw("22-alarm-lock-rect", rect, accessory: true) { AlarmView(forcedFamily: .accessoryRectangular, entry: pe) }
         draw("22-alarm-lock-inline", inline, accessory: true) { AlarmView(forcedFamily: .accessoryInline, entry: pe) }
         draw("23-snooze-lock-screen", CGSize(width: 364, height: 96), accessory: true) {
-            SnoozeCard(title: "Flight SL770", sub: "Report 06:00", fireDate: nil, remaining: 8 * 60 + 41).background(Color.black)
+            SnoozeCard(title: "Gym", sub: "Mon Wed Fri", fireDate: nil, remaining: 8 * 60 + 41).background(Color.black)
         }
 
         // before Axiom has ever been opened

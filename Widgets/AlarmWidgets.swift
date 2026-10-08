@@ -83,13 +83,18 @@ struct AlarmWidget: Widget {
             AlarmView(entry: e).axiomBackground()
         }
         .configurationDisplayName("Next alarm")
-        .description("Your next alarm from Axiom: the one before your next duty, or one you set yourself.")
+        .description("Your next alarm from Axiom's alarm clock.")
         .supportedFamilies([.systemSmall, .accessoryRectangular, .accessoryInline])
     }
 }
 
 // MARK: - Snooze countdown on the Lock Screen and in the Dynamic Island
 // The ringing screen itself is the iPhone's own; this is what shows while an alarm is snoozed.
+// The countdown ticks in Axiom's dot letters: AxiomDots.ttf is the dashboard's 5×7 dots made into a font.
+
+extension Font {
+    static func axiomDots(_ size: CGFloat) -> Font { .custom("AxiomDots-Regular", size: size) }
+}
 
 /// Plain values, so the tests can draw it without a running alarm.
 struct SnoozeCard: View {
@@ -102,9 +107,10 @@ struct SnoozeCard: View {
         HStack(alignment: .center, spacing: 14) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 5) {
-                    Image(systemName: "zzz").font(.system(size: 11, weight: .bold)).foregroundStyle(Ax.yellow)
-                    Text("SNOOZE").font(Ax.mono(11, .bold)).tracking(1.2).foregroundStyle(Ax.yellow)
+                    Image(systemName: "zzz").font(.system(size: 11, weight: .bold))
+                    Text("SNOOZE").font(Ax.mono(11, .bold)).tracking(1.2)
                 }
+                .foregroundStyle(.white)
                 Text(title).font(Ax.mono(15, .bold)).foregroundStyle(.white).lineLimit(1)
                 if !sub.isEmpty { Text(sub).font(Ax.mono(11)).foregroundStyle(.white.opacity(0.6)).lineLimit(1) }
             }
@@ -116,8 +122,7 @@ struct SnoozeCard: View {
                     Text(Fmt.mmss(remaining))
                 }
             }
-            .font(.system(size: 40, weight: .heavy, design: .monospaced))
-            .monospacedDigit()
+            .font(.axiomDots(34))
             .foregroundStyle(.white)
             .multilineTextAlignment(.trailing)
             .frame(maxWidth: 150, alignment: .trailing)
@@ -145,26 +150,26 @@ struct AlarmLiveActivity: Widget {
                        fireDate: Self.fireDate(context.state),
                        remaining: Self.remaining(context.state))
                 .activityBackgroundTint(.black)
-                .activitySystemActionForegroundColor(Ax.yellow)
+                .activitySystemActionForegroundColor(.white)
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    Label("Snooze", systemImage: "zzz").font(Ax.mono(12, .bold)).foregroundStyle(Ax.yellow)
+                    Label("Snooze", systemImage: "zzz").font(Ax.mono(12, .bold)).foregroundStyle(.white)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    Self.countdown(context.state).font(.system(size: 22, weight: .heavy, design: .monospaced)).monospacedDigit()
+                    Self.countdown(context.state).font(.axiomDots(22)).foregroundStyle(.white)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     Text(context.attributes.metadata?.title ?? "Alarm").font(Ax.mono(13)).lineLimit(1)
                 }
             } compactLeading: {
-                Image(systemName: "alarm.fill").foregroundStyle(Ax.yellow)
+                Image(systemName: "alarm.fill").foregroundStyle(.white)
             } compactTrailing: {
-                Self.countdown(context.state).font(.system(size: 14, weight: .bold, design: .monospaced)).monospacedDigit().frame(maxWidth: 52)
+                Self.countdown(context.state).font(.axiomDots(13)).foregroundStyle(.white).frame(maxWidth: 56)
             } minimal: {
-                Image(systemName: "zzz").foregroundStyle(Ax.yellow)
+                Image(systemName: "zzz").foregroundStyle(.white)
             }
-            .keylineTint(Ax.yellow)
+            .keylineTint(.white)
         }
     }
 

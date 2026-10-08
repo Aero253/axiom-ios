@@ -18,6 +18,7 @@ final class DashboardViewController: UIViewController, WKScriptMessageHandler, W
         config.preferences.javaScriptCanOpenWindowsAutomatically = false
         let ucc = WKUserContentController()
         ucc.add(WeakHandler(self), name: "axiom")
+        ucc.add(WeakHandler(self), name: "axiomAlarm")   // Stop / Snooze on Axiom's own ringing screen
         config.userContentController = ucc
 
         webView = WKWebView(frame: .zero, configuration: config)
@@ -40,6 +41,7 @@ final class DashboardViewController: UIViewController, WKScriptMessageHandler, W
         if let index = Bundle.main.url(forResource: "index", withExtension: "html", subdirectory: "web") {
             webView.loadFileURL(index, allowingReadAccessTo: index.deletingLastPathComponent())
         }
+        startWatchingAlarms()
         NotificationCenter.default.addObserver(self, selector: #selector(becameActive),
                                                name: UIApplication.didBecomeActiveNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(wentToBackground),
@@ -49,6 +51,13 @@ final class DashboardViewController: UIViewController, WKScriptMessageHandler, W
     // MARK: - Dashboard → widgets
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        if message.name == "axiomAlarm" {
+            guard let text = message.body as? String, let data = text.data(using: .utf8),
+                  let cmd = try? JSONSerialization.jsonObject(with: data) as? [String: String],
+                  let action = cmd["action"], let id = cmd["id"].flatMap(UUID.init(uuidString:)) else { return }
+            AlarmScheduler.shared.handle(action: action, id: id)
+            return
+        }
         guard message.name == "axiom",
               let text = message.body as? String,
               let data = text.data(using: .utf8),
@@ -70,6 +79,28 @@ final class DashboardViewController: UIViewController, WKScriptMessageHandler, W
         AlarmScheduler.shared.sync(set) { [weak self] status in
             self?.sendAlarmStatusToPage(status)
         }
+    }
+
+    /// While iOS rings an alarm, Axiom shows its own dot-matrix ringing screen (when you're using the phone or tap the alarm).
+    private var ringing: UUID?
+    private func startWatchingAlarms() {
+        AlarmScheduler.shared.watchRinging { [weak self] id, item in
+            guard let self = self else { return }
+            self.ringing = id
+            self.sendRingingToPage()
+        }
+    }
+
+    private func sendRingingToPage() {
+        guard let id = ringing else {
+            webView.evaluateJavaScript("window.axiomAlarmRinging && window.axiomAlarmRinging(null)", completionHandler: nil)
+            return
+        }
+        let item = AlarmScheduler.loadKnown()[id.uuidString]
+        var x: [String: Any] = ["id": id.uuidString, "title": item?.title ?? "Alarm", "sub": item?.sub ?? ""]
+        if let h = item?.h, let m = item?.m { x["h"] = h; x["m"] = m }
+        guard let data = try? JSONSerialization.data(withJSONObject: x), let json = String(data: data, encoding: .utf8) else { return }
+        webView.evaluateJavaScript("window.axiomAlarmRinging && window.axiomAlarmRinging(\(json))", completionHandler: nil)
     }
 
     private func sendAlarmStatusToPage(_ status: AlarmStatus) {
@@ -102,6 +133,7 @@ final class DashboardViewController: UIViewController, WKScriptMessageHandler, W
         // the page has loaded: pass on anything the widgets changed while the app was closed
         if let w = Shared.load()?.water { sendWaterToPage(w) }
         sendListTicksToPage()
+        sendRingingToPage()   // opened by tapping a ringing alarm
     }
 
     @objc private func wentToBackground() {

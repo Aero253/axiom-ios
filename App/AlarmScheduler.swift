@@ -24,6 +24,52 @@ final class AlarmScheduler {
     private var busy = false
     private var queued: AlarmSet?
     private var lastStatus: AlarmStatus?
+    private var watching: Task<Void, Never>?
+
+    /// What each alarm ID handed to iOS stands for (kept on the phone so it survives a relaunch).
+    private static let knownKey = "axiom.alarm.known"
+    static func remember(_ items: [UUID: AlarmItem]) {
+        var known = loadKnown()
+        for (id, i) in items { known[id.uuidString] = i }
+        if known.count > 200 { known = Dictionary(uniqueKeysWithValues: known.suffix(120).map { ($0.key, $0.value) }) }
+        if let d = try? JSONEncoder().encode(known) { UserDefaults.standard.set(d, forKey: knownKey) }
+    }
+    static func loadKnown() -> [String: AlarmItem] {
+        guard let d = UserDefaults.standard.data(forKey: knownKey) else { return [:] }
+        return (try? JSONDecoder().decode([String: AlarmItem].self, from: d)) ?? [:]
+    }
+
+    /// Tell `onRing` whenever an alarm starts or stops ringing (iOS 26), so Axiom can show its own ringing screen.
+    func watchRinging(_ onRing: @escaping (UUID?, AlarmItem?) -> Void) {
+        #if canImport(AlarmKit)
+        if #available(iOS 26.0, *) {
+            watching?.cancel()
+            watching = Task { @MainActor in
+                Self.report((try? AlarmManager.shared.alarms) ?? [], onRing)
+                for await alarms in AlarmManager.shared.alarmUpdates {
+                    Self.report(alarms, onRing)
+                }
+            }
+        }
+        #endif
+    }
+
+    /// Stop or snooze the alarm that is ringing, from Axiom's own ringing screen.
+    func handle(action: String, id: UUID) {
+        #if canImport(AlarmKit)
+        if #available(iOS 26.0, *) {
+            if action == "snooze" { try? AlarmManager.shared.countdown(id: id) } else { try? AlarmManager.shared.stop(id: id) }
+        }
+        #endif
+    }
+
+    #if canImport(AlarmKit)
+    @available(iOS 26.0, *)
+    private static func report(_ alarms: [Alarm], _ onRing: (UUID?, AlarmItem?) -> Void) {
+        guard let a = alarms.first(where: { $0.state == .alerting }) else { onRing(nil, nil); return }
+        onRing(a.id, loadKnown()[a.id.uuidString])
+    }
+    #endif
 
     /// Bring iOS's alarms in line with `set`, then report back. Calls made while a sync is running are merged into one.
     func sync(_ set: AlarmSet, report: @escaping (AlarmStatus) -> Void) {
@@ -85,6 +131,7 @@ final class AlarmScheduler {
         }
         var want: [UUID: AlarmItem] = [:]
         for i in items { want[Self.id(for: i, snooze: set.snooze)] = i }
+        Self.remember(want)
         let have = (try? manager.alarms) ?? []
         // drop alarms that changed or were removed; never touch one that is ringing or snoozing
         for a in have where want[a.id] == nil && a.state == .scheduled {
@@ -115,17 +162,17 @@ final class AlarmScheduler {
 
     @available(iOS 26.0, *)
     nonisolated static func configuration(for item: AlarmItem, schedule: Alarm.Schedule, snooze: Int) -> AlarmManager.AlarmConfiguration<AxiomAlarmMeta> {
-        let yellow = Color(red: 1.0, green: 0.769, blue: 0.0)
+        // Axiom's black and white: the iPhone draws this screen, Axiom picks its words, buttons and colour
         let alert = AlarmPresentation.Alert(
             title: LocalizedStringResource(stringLiteral: item.title),
-            stopButton: AlarmButton(text: "Stop", textColor: .black, systemImageName: "stop.fill"),
-            secondaryButton: AlarmButton(text: "Snooze", textColor: .white, systemImageName: "zzz"),
+            stopButton: AlarmButton(text: "Stop", textColor: .white, systemImageName: "stop.fill"),
+            secondaryButton: AlarmButton(text: "Snooze \(snooze)", textColor: .black, systemImageName: "zzz"),
             secondaryButtonBehavior: .countdown)
         let countdown = AlarmPresentation.Countdown(title: LocalizedStringResource(stringLiteral: "Snooze · " + item.title), pauseButton: nil)
         let attributes = AlarmAttributes<AxiomAlarmMeta>(
             presentation: AlarmPresentation(alert: alert, countdown: countdown),
             metadata: AxiomAlarmMeta(title: item.title, sub: item.sub ?? ""),
-            tintColor: yellow)
+            tintColor: .white)
         return AlarmManager.AlarmConfiguration<AxiomAlarmMeta>(
             countdownDuration: Alarm.CountdownDuration(preAlert: nil, postAlert: TimeInterval(max(1, snooze) * 60)),
             schedule: schedule,

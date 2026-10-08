@@ -243,33 +243,38 @@ input.inp[type=time]::-webkit-datetime-edit, input.inp[type=date]::-webkit-datet
 /* alarm clock */
 .alhd{display:grid; grid-template-columns:minmax(0,1fr) auto; gap:4px 12px; align-items:end}
 .alhd .bign{grid-row:span 2}
-.alhd .what{font:600 13px/1.3 var(--f-mono); min-width:0; overflow-wrap:anywhere}
+.alhd .what{font:600 13px/1.3 var(--f-mono); min-width:0; overflow-wrap:anywhere; text-align:right}
 .alhd .in{font:500 11px/1.3 var(--f-mono); color:var(--dim); text-align:right; white-space:nowrap}
 .alhd .what small{display:block; color:var(--dim); font-weight:500; font-size:11px}
-.alset{display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; justify-content:space-between}
-.alset .grp{display:flex; gap:4px; align-items:center; flex-wrap:wrap}
-.alset .grp .lbl{margin-right:2px}
 .al .it{gap:10px}
-.al .tm{font:800 20px/1 var(--f-led); font-variant-numeric:tabular-nums; min-width:3.1em}
+.al .ed{appearance:none; border:0; background:transparent; color:inherit; padding:0; flex:1; min-width:0; display:flex; align-items:center; gap:10px; text-align:left; cursor:pointer; font:inherit}
+.al .tm{font:800 22px/1 var(--f-led); font-variant-numeric:tabular-nums; min-width:3.1em}
+.al .tx{flex:1; min-width:0; overflow-wrap:anywhere}
 .al .tx small{display:block; color:var(--dim); font:500 11px/1.3 var(--f-mono)}
 .al .it.off .tm, .al .it.off .tx{color:var(--faint)}
-.al .it.off .tx{text-decoration:none}
+.al .it.editing{outline:1.5px dashed var(--faint); outline-offset:2px; border-radius:6px}
 .al .ck[aria-pressed="true"]{border-color:var(--ink)}
 .al .ck[aria-pressed="true"]::after{background:var(--ink); box-shadow:0 0 6px var(--glow)}
-.al .more{font:500 11px/1.3 var(--f-mono); color:var(--dim); padding:6px 2px 0; border:0}
-.alf{display:grid; gap:6px}
+.alf{display:grid; gap:8px; padding-top:4px}
 .alf .r{display:flex; gap:6px; align-items:center}
 .alf .r .inp{flex:1 1 0; width:0; min-width:0}
 .alf .r input.inp[type=time]{flex:0 1 7.4em; width:7.4em}
+.alf .r2{display:flex; gap:8px 12px; align-items:center; justify-content:space-between; flex-wrap:wrap}
+.alf .grp{display:flex; gap:4px; align-items:center; flex-wrap:wrap}
+.alf .grp .lbl{margin-right:2px}
 .aldays{display:flex; gap:4px; flex-wrap:wrap}
 .aldays .tab{min-width:calc(var(--tap) * .8 / var(--z)); padding:5px 0}
-#alRing{position:fixed; inset:0; z-index:200; display:grid; place-items:center; background:var(--bg); color:var(--ink); padding:24px; text-align:center}
+#alRing{position:fixed; inset:0; z-index:200; display:grid; place-items:center; background:#000; color:#fff; padding:24px; text-align:center;
+  --ink:#fff; --dim:rgba(255,255,255,.6); --unlit:rgba(255,255,255,.1); --line:rgba(255,255,255,.3)}
 #alRing[hidden]{display:none}
-#alRing .t{font:900 clamp(72px, 30vw, 180px)/.9 var(--f-led); font-variant-numeric:tabular-nums; animation:blink 1s steps(2) infinite}
-#alRing .w{font:700 18px/1.3 var(--f-mono); margin-top:14px; letter-spacing:.06em; text-transform:uppercase}
-#alRing .s{font:500 13px/1.3 var(--f-mono); color:var(--dim); margin-top:6px}
-#alRing .b{display:flex; gap:10px; justify-content:center; margin-top:28px; flex-wrap:wrap}
-#alRing .btn{font-size:15px; padding:14px 22px; border-radius:999px}
+#alRing .d{font:600 12px/1 var(--f-mono); letter-spacing:.22em; text-transform:uppercase}
+#alRing .t{font:900 clamp(80px, 30vw, 190px)/.9 var(--f-led); font-variant-numeric:tabular-nums; margin-top:18px; animation:blink 1s steps(2) infinite}
+#alRing .w{font:700 18px/1.3 var(--f-mono); margin-top:22px; letter-spacing:.08em; text-transform:uppercase}
+#alRing .s{font:500 13px/1.3 var(--f-mono); color:var(--dim); margin-top:6px; min-height:1em}
+#alRing .b{display:flex; gap:12px; justify-content:center; margin-top:34px; flex-wrap:wrap}
+#alRing .b button{appearance:none; font:700 15px/1 var(--f-mono); letter-spacing:.1em; text-transform:uppercase; padding:16px 26px; border-radius:999px; cursor:pointer}
+#alRing #alRSn{background:transparent; color:#fff; border:1.5px solid rgba(255,255,255,.4)}
+#alRing #alRStop{background:#fff; color:#000; border:1.5px solid #fff; padding-left:34px; padding-right:34px}
 .cdl{list-style:none; margin:0; padding:0; display:grid; gap:8px}
 .cdl li.cd{display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:12px; align-items:center; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:var(--raise)}
 .cdl .n{font:900 34px/.9 var(--f-led); min-width:2ch; text-align:right; font-variant-numeric:tabular-nums}
@@ -598,7 +603,7 @@ body.calm *, body.calm *::before, body.calm *::after{animation:none!important; t
 </style>
 </head>
 <body class="booting">
-<div id="alRing" hidden role="alertdialog" aria-live="assertive" aria-label="Alarm"><div><div class="t" id="alRT"></div><div class="w" id="alRW"></div><div class="s" id="alRS"></div><div class="b"><button class="btn" id="alRSn">Snooze</button><button class="btn pri" id="alRStop">Stop</button></div></div></div>
+<div id="alRing" hidden role="alertdialog" aria-live="assertive" aria-label="Alarm"><div><div class="d" id="alRD"></div><div class="t" id="alRT"></div><div class="w" id="alRW"></div><div class="s" id="alRS"></div><div class="b"><button id="alRSn">Snooze</button><button id="alRStop">Stop</button></div></div></div>
 <canvas id="bgdots" aria-hidden="true"></canvas>
 <div id="splash" hidden aria-hidden="true"><canvas id="splashCv"></canvas></div>
 <div class="wrap">
@@ -781,17 +786,11 @@ body.calm *, body.calm *::before, body.calm *::after{animation:none!important; t
     <div class="w" data-w="alarm"><section class="p" id="pAlarm" aria-label="Alarm clock">
       <div class="ph"><h2>Alarm</h2><span class="lbl" id="alSt"></span></div>
       <div id="alNext"></div>
-      <div class="alset">
-        <label class="tgl"><input type="checkbox" id="alDuty"> Duty alarms</label>
-        <div class="grp" role="group" aria-label="Backup alarm"><span class="lbl">Backup</span><span id="alBk"></span></div>
-        <div class="grp" role="group" aria-label="Snooze length"><span class="lbl">Snooze</span><span id="alSn"></span></div>
-      </div>
-      <ul class="list al" id="alDutyList" aria-label="Duty alarms"></ul>
-      <div class="lbl">My alarms</div>
-      <ul class="list al" id="alList" aria-label="My alarms"></ul>
+      <ul class="list al" id="alList" aria-label="Alarms"></ul>
       <form class="alf" id="alForm">
-        <div class="r"><input class="inp" id="alTime" type="time" value="07:00" aria-label="Alarm time" required><input class="inp" id="alLabel" placeholder="Label" maxlength="40" autocomplete="off" aria-label="Label"><button class="btn pri ico" data-ic="plus" aria-label="Add alarm" title="Add alarm"></button></div>
-        <div class="aldays" id="alDays" role="group" aria-label="Repeat on"></div>
+        <div class="r"><input class="inp" id="alTime" type="time" value="07:00" aria-label="Alarm time" required><input class="inp" id="alLabel" placeholder="Label" maxlength="40" autocomplete="off" aria-label="Label"><button class="btn pri ico" id="alAdd" data-ic="plus" aria-label="Add alarm" title="Add alarm"></button></div>
+        <div class="r2"><div class="aldays" id="alDays" role="group" aria-label="Repeat on"></div><button type="button" class="btn ghost ico" id="alCancel" data-ic="x" aria-label="Cancel editing" title="Cancel editing" hidden></button></div>
+        <div class="r2"><div class="grp" role="group" aria-label="Snooze length"><span class="lbl">Snooze min</span><span id="alSn"></span></div></div>
       </form>
       <div class="note" id="alNote"></div>
     </section></div>
@@ -1191,7 +1190,7 @@ const BAG_DEFAULT = ['Passport', 'Crew ID card', 'Cabin crew licence', 'Name bad
 const S = { roster: { duties: [], name: '', base: 'DMK', importedAt: '' }, events: [], todos: [], shopping: [], notes: '', world: ['NRT', 'SIN'], whide: [], layout: [],
   count: [], bag: BAG_DEFAULT.map((t, i) => ({ id: 'b' + i, text: t, done: false })), fx: FX_DEFAULT.slice(),
   links: [{ id: 'swap', label: 'SL Swap Check', url: 'https://aero253.github.io/SL-Roster-swap-checker/' }],
-  docs: [], exp: [], lay: {}, wake: { travel: 60, ready: 45, sleep: 8 }, alarm: { duty: true, backup: 0, snooze: 9, skip: [], list: [] }, water: { date: '', n: 0, goal: 8 }, places: { sun: { add: [], hide: [] }, wx: { add: [], hide: [] } }, pa: { tpl: '' } };
+  docs: [], exp: [], lay: {}, wake: { travel: 60, ready: 45, sleep: 8 }, alarm: { snooze: 9, list: [] }, water: { date: '', n: 0, goal: 8 }, places: { sun: { add: [], hide: [] }, wx: { add: [], hide: [] } }, pa: { tpl: '' } };
 const V = { month: todayISO().slice(0, 7), sel: todayISO(), wx: 'DMK', msg: null };
 
 /* Example month shown only until a roster is imported. Never saved. */
@@ -2158,65 +2157,45 @@ function renderWake() {
     <div class="note">${until > 0 ? `Bedtime in ${dur(until).replace(/^00H /, '').toLowerCase()}.` : alarm > now ? `Past bedtime. Sleep now for ${hm((alarm - now) / 36e5)} before the alarm.` : 'Alarm time has passed.'}</div>`;
 }
 ['travel', 'ready', 'sleep'].forEach(k => $('#wk' + k[0].toUpperCase() + k.slice(1)).addEventListener('input', e => {
-  const v = parseFloat(e.target.value); if (!(v >= 0) || v > (k === 'sleep' ? 14 : 300)) return; S.wake[k] = v; save('wake'); renderWake(); renderAlarm(); }));
+  const v = parseFloat(e.target.value); if (!(v >= 0) || v > (k === 'sleep' ? 14 : 300)) return; S.wake[k] = v; save('wake'); renderWake(); }));
 $('#wkMan').addEventListener('input', renderWake);
 
 /* ---------- alarm clock ----------
-   Duty alarms come from the Wake-up planner (report − travel − get ready) for every duty in the next 14 days.
-   In the iPhone app they're handed to iOS, which rings them like the Clock app; in a browser they ring only while the page is open. */
-const AL = { st: null, last: Date.now(), ringing: null, snoozed: [] };
+   A plain alarm clock: a time, a label and the days it repeats, on this phone's clock.
+   In the iPhone app the alarms are handed to iOS, which rings them like the Clock app; in a browser they ring only while the page is open. */
+const AL = { st: null, last: Date.now(), ringing: null, snoozed: [], edit: null };
 const DAYL = ['S', 'M', 'T', 'W', 'T', 'F', 'S'], DAYN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 let alDays = [];
-const hhmmB = ms => { const b = new Date(ms + H7); return `${pad(b.getUTCHours())}:${pad(b.getUTCMinutes())}`; };
+const alHM = a => `${pad(a.h)}:${pad(a.m)}`;
+const alRep = days => days.length === 7 ? 'Every day' : days.length === 5 && [1, 2, 3, 4, 5].every(d => days.includes(d)) ? 'Weekdays'
+  : days.length === 2 && days.includes(0) && days.includes(6) ? 'Weekends' : days.length ? days.slice().sort().map(d => DAYN[d]).join(' ') : 'Once';
 function alNextLocal(a, from) { // next time a's clock time comes round on this device, after `from`
   const d = new Date(from);
   for (let i = 0; i < 8; i++) { const c = new Date(d.getFullYear(), d.getMonth(), d.getDate() + i, a.h, a.m, 0, 0).getTime();
-    if (c > from && (!a.days.length || a.days.includes(new Date(c).getDay()))) return c; }
+    if (c > from && (!a.days || !a.days.length || a.days.includes(new Date(c).getDay()))) return c; }
   return null;
 }
-function alFmt(x) { // [time, weekday]
-  if (x.key[0] === 'm') return [`${pad(x.h)}:${pad(x.m)}`, DAYN[new Date(x.when).getDay()]];
-  return [hhmmB(x.when), DOW[new Date(x.when + H7).getUTCDay()]];
-}
-function alDutyPlan(now = Date.now()) {
-  const A = S.alarm, w = S.wake, out = [];
-  if (demo()) return out;
-  duties().filter(d => !FREE.includes(d.type) && span(d)).map(d => ({ d, s: span(d) })).filter(x => x.s[0] > now && x.s[0] < now + 14 * 864e5)
-    .sort((a, b) => a.s[0] - b.s[0]).forEach(({ d, s }) => {
-      const at = s[0] - w.travel * 60000 - w.ready * 60000; if (at <= now) return;
-      const flt = d.legs && d.legs[0] && d.legs[0].flt;
-      out.push({ key: 'd' + s[0], at, title: d.type === 'FDP' ? (flt ? 'Flight ' + flt : 'Flight') : (d.label || TYPES[d.type] || d.type),
-        sub: `${d.type === 'FDP' ? 'Report' : 'Starts'} ${hhmmB(s[0])}`, skip: A.skip.includes('d' + s[0]) });
-    });
-  return out;
-}
-function alTidy() { // one-off alarms switch themselves off once they've rung; forget skips for duties that have passed
+function alTidy() { // a one-off alarm switches itself off once it has rung
   const now = Date.now(); let ch = false;
   S.alarm.list.forEach(a => { if (a.on && !a.days.length) { const at = alNextLocal(a, a.armed || 0); if (!at || at <= now - 60e3) { a.on = false; ch = true; } } });
-  const keep = S.alarm.skip.filter(k => +k.slice(1) > now); if (keep.length !== S.alarm.skip.length) { S.alarm.skip = keep; ch = true; }
   if (ch) save('alarm');
 }
 // everything that should ring, as the iPhone app schedules it
 function alarmsForNative(now = Date.now()) { // `now`: only what rings after this
-  const A = S.alarm, list = [];
-  if (A.duty) alDutyPlan(now).forEach(p => { if (p.skip) return;
-    list.push({ key: p.key, at: p.at, title: p.title, sub: p.sub });
-    if (A.backup) list.push({ key: p.key + 'b', at: p.at + A.backup * 60000, title: 'Backup · ' + p.title, sub: p.sub }); });
-  A.list.forEach(a => { if (!a.on) return; const title = a.label || 'Alarm';
-    if (a.days.length) list.push({ key: 'm' + a.id, h: a.h, m: a.m, days: a.days.slice().sort(), title, sub: a.days.length === 7 ? 'Every day' : a.days.slice().sort().map(d => DAYN[d]).join(' ') });
+  const list = [];
+  S.alarm.list.forEach(a => { if (!a.on) return; const title = a.label || 'Alarm';
+    if (a.days.length) list.push({ key: 'm' + a.id, h: a.h, m: a.m, days: a.days.slice().sort(), title, sub: alRep(a.days) });
     else { const at = alNextLocal(a, a.armed || 0); if (at && at > now) list.push({ key: 'm' + a.id, at, h: a.h, m: a.m, title, sub: '' }); } });
-  return { on: true, snooze: A.snooze, list: list.slice(0, 40) };
+  return { on: true, snooze: S.alarm.snooze, list: list.slice(0, 40) };
 }
-function alUpcoming() { // the next few times anything rings, for the big display and the browser ringer
-  const now = Date.now();
-  return alarmsForNative().list.map(x => ({ ...x, when: x.at || alNextLocal({ h: x.h, m: x.m, days: x.days }, now) })).filter(x => x.when > now).sort((a, b) => a.when - b.when);
-}
+const alWhen = (x, from) => x.at || alNextLocal({ h: x.h, m: x.m, days: x.days }, from);
+function alUpcoming() { const now = Date.now(); return alarmsForNative().list.map(x => ({ ...x, when: alWhen(x, now) })).filter(x => x.when > now).sort((a, b) => a.when - b.when); }
 function alStatus() {
   const st = AL.st;
   if (!nativeH()) return ['Rings while open', 'In a browser, alarms only ring while this page is open and the screen is on. The Axiom iPhone app rings them even when your phone is locked.'];
   if (!st) return ['', ''];
   if (st.auth === 'denied') return ['Alarms are off', 'Turn on Alarms for Axiom in Settings › Apps › Axiom, then come back.'];
-  if (st.mode === 'alarmkit') return [st.auth === 'authorized' ? 'Rings on this iPhone' : '', 'Rings like the Clock app, even when your iPhone is locked, on silent or in Focus. Snooze shows on the Lock Screen.' + (st.auth === 'authorized' ? '' : ' Your iPhone asks to allow alarms when the first one is set.') + (st.error ? ' (' + st.error + ')' : '')];
+  if (st.mode === 'alarmkit') return [st.auth === 'authorized' ? 'Rings on this iPhone' : '', 'Rings like the Clock app, even when your iPhone is locked, on silent or in Focus.' + (st.auth === 'authorized' ? '' : ' Your iPhone asks to allow alarms when the first one is set.') + (st.error ? ' (' + st.error + ')' : '')];
   if (st.auth !== 'authorized') return ['', 'Your iPhone asks to allow notifications when the first alarm is set. This iOS shows alarms as notifications; update to iOS 26 for alarms that ring like the Clock app.'];
   return ['Notification', 'This iOS shows alarms as notifications, which stay quiet on silent. Update to iOS 26 for alarms that ring like the Clock app.'];
 }
@@ -2225,68 +2204,76 @@ function renderAlarm() {
   alTidy();
   const A = S.alarm, now = Date.now(), [st, note] = alStatus();
   $('#alSt').textContent = st; $('#alNote').textContent = note;
-  $('#alDuty').checked = !!A.duty;
-  $('#alBk').innerHTML = [0, 5, 10, 15].map(v => `<button type="button" class="tab" data-albk="${v}" aria-pressed="${A.backup === v}">${v ? '+' + v : 'Off'}</button>`).join('');
   $('#alSn').innerHTML = [5, 9, 15].map(v => `<button type="button" class="tab" data-alsn="${v}" aria-pressed="${A.snooze === v}">${v}</button>`).join('');
   const nx = alUpcoming()[0];
-  $('#alNext').innerHTML = nx ? `<div class="alhd"><div class="bign">${alFmt(nx)[0]}</div><div class="in">in ${dur(nx.when - now).replace(/^00H /, '').toLowerCase()}</div>
-      <div class="what">${esc(nx.title)}<small>${esc([alFmt(nx)[1], nx.sub].filter(Boolean).join(' · '))}</small></div></div>`
-    : `<div class="empty">No alarm set.${demo() && A.duty ? ' Duty alarms start once you import your roster.' : ''}</div>`;
-  const plan = A.duty ? alDutyPlan() : [], SHOW = 5;
-  $('#alDutyList').hidden = !A.duty;
-  $('#alDutyList').innerHTML = !A.duty ? '' : plan.length ? plan.slice(0, SHOW).map(p => `<li class="it${p.skip ? ' off' : ''}">
-      <button class="ck" type="button" data-alskip="${p.key}" aria-pressed="${!p.skip}" aria-label="${p.skip ? 'Ring' : 'Skip'} the alarm for ${esc(p.title)}"></button>
-      <span class="tm">${hhmmB(p.at)}</span><span class="tx">${esc(p.title)}<small>${DOW[new Date(p.at + H7).getUTCDay()]} ${pad(new Date(p.at + H7).getUTCDate())} · ${esc(p.sub)}${p.skip ? ' · skipped' : A.backup ? ` · backup ${hhmmB(p.at + A.backup * 60000)}` : ''}</small></span></li>`).join('')
-      + (plan.length > SHOW ? `<li class="more">+${plan.length - SHOW} more in the next 14 days</li>` : '')
-    : `<li class="empty">${demo() ? 'Import your roster and an alarm is set before every duty.' : 'No duties in the next 14 days.'}</li>`;
-  $('#alList').innerHTML = A.list.length ? A.list.slice().sort((a, b) => a.h * 60 + a.m - b.h * 60 - b.m).map(a => `<li class="it${a.on ? '' : ' off'}">
-      <button class="ck" type="button" data-alon="${a.id}" aria-pressed="${!!a.on}" aria-label="${a.on ? 'Turn off' : 'Turn on'} ${esc(a.label || 'alarm')} ${pad(a.h)}:${pad(a.m)}"></button>
-      <span class="tm">${pad(a.h)}:${pad(a.m)}</span><span class="tx">${esc(a.label || 'Alarm')}<small>${a.days.length === 7 ? 'Every day' : a.days.length ? a.days.slice().sort().map(d => DAYN[d]).join(' ') : 'Once'}</small></span>
-      <button class="x" type="button" data-aldel="${a.id}" aria-label="Delete ${esc(a.label || 'alarm')} ${pad(a.h)}:${pad(a.m)}">${ic('x')}</button></li>`).join('')
-    : '<li class="empty">Add your own alarms below: a time, a label and the days it repeats.</li>';
+  $('#alNext').innerHTML = nx ? `<div class="alhd"><div class="bign">${alHM(nx)}</div><div class="in">in ${dur(nx.when - now).replace(/^00H /, '').toLowerCase()}</div>
+      <div class="what">${esc(nx.title)}<small>${DAYN[new Date(nx.when).getDay()]}${nx.sub && nx.sub !== 'Once' ? ' · ' + esc(nx.sub) : ''}</small></div></div>`
+    : `<div class="empty">No alarm on.</div>`;
+  $('#alList').innerHTML = A.list.length ? A.list.slice().sort((a, b) => a.h * 60 + a.m - b.h * 60 - b.m).map(a => `<li class="it${a.on ? '' : ' off'}${AL.edit === a.id ? ' editing' : ''}">
+      <button class="ck" type="button" data-alon="${a.id}" aria-pressed="${!!a.on}" aria-label="${a.on ? 'Turn off' : 'Turn on'} ${esc(a.label || 'alarm')} ${alHM(a)}"></button>
+      <button class="ed" type="button" data-aledit="${a.id}" aria-label="Edit ${esc(a.label || 'alarm')} ${alHM(a)}"><span class="tm">${alHM(a)}</span><span class="tx">${esc(a.label || 'Alarm')}<small>${alRep(a.days)}</small></span></button>
+      <button class="x" type="button" data-aldel="${a.id}" aria-label="Delete ${esc(a.label || 'alarm')} ${alHM(a)}">${ic('x')}</button></li>`).join('')
+    : '<li class="empty">No alarms yet. Pick a time below, add a label and the days it repeats, then tap +.</li>';
   $('#alDays').innerHTML = DAYL.map((l, i) => `<button type="button" class="tab" data-alday="${i}" aria-pressed="${alDays.includes(i)}" aria-label="${DAYN[i]}">${l}</button>`).join('');
+  const editing = !!AL.edit; $('#alCancel').hidden = !editing;
+  if ($('#alAdd').dataset.mode !== String(editing)) { $('#alAdd').dataset.mode = String(editing); setIc($('#alAdd'), editing ? 'check' : 'plus', editing ? 'Save alarm' : 'Add alarm'); }
 }
-$('#alDuty').addEventListener('change', e => { S.alarm.duty = e.target.checked; save('alarm'); renderAlarm(); });
+function alEditEnd() { AL.edit = null; alDays = []; $('#alLabel').value = ''; }
 $('#pAlarm').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return; const d = b.dataset, A = S.alarm;
-  if (d.albk != null) { A.backup = +d.albk; }
-  else if (d.alsn != null) { A.snooze = +d.alsn; }
-  else if (d.alskip) { A.skip = A.skip.includes(d.alskip) ? A.skip.filter(k => k !== d.alskip) : [...A.skip, d.alskip]; }
+  if (d.alsn != null) { A.snooze = +d.alsn; }
   else if (d.alon) { const a = A.list.find(x => x.id === d.alon); if (!a) return; a.on = !a.on; if (a.on) a.armed = Date.now(); }
-  else if (d.aldel) { A.list = A.list.filter(x => x.id !== d.aldel); }
+  else if (d.aldel) { A.list = A.list.filter(x => x.id !== d.aldel); if (AL.edit === d.aldel) alEditEnd(); }
+  else if (d.aledit) { const a = A.list.find(x => x.id === d.aledit); if (!a) return;
+    AL.edit = a.id; alDays = a.days.slice(); $('#alTime').value = alHM(a); $('#alLabel').value = a.label || ''; renderAlarm(); $('#alTime').focus(); return; }
+  else if (b.id === 'alCancel') { alEditEnd(); renderAlarm(); return; }
   else if (d.alday != null) { const i = +d.alday; alDays = alDays.includes(i) ? alDays.filter(x => x !== i) : [...alDays, i]; renderAlarm(); return; }
   else return;
   unlockAudio(); save('alarm'); renderAlarm();
-  const f = d.alskip ? `[data-alskip="${d.alskip}"]` : d.alon ? `[data-alon="${d.alon}"]` : d.albk != null ? `[data-albk="${d.albk}"]` : d.alsn != null ? `[data-alsn="${d.alsn}"]` : null;
+  const f = d.alon ? `[data-alon="${d.alon}"]` : d.alsn != null ? `[data-alsn="${d.alsn}"]` : null;
   if (f && $(f)) $(f).focus();
 });
 $('#alForm').addEventListener('submit', e => {
   e.preventDefault(); const v = $('#alTime').value; if (!/^\d\d:\d\d$/.test(v)) return;
   unlockAudio();
-  S.alarm.list.push({ id: uid(), h: +v.slice(0, 2), m: +v.slice(3, 5), label: $('#alLabel').value.trim(), days: alDays.slice(), on: true, armed: Date.now() });
-  $('#alLabel').value = ''; alDays = []; save('alarm'); renderAlarm();
+  const vals = { h: +v.slice(0, 2), m: +v.slice(3, 5), label: $('#alLabel').value.trim(), days: alDays.slice().sort(), on: true, armed: Date.now() };
+  const a = AL.edit && S.alarm.list.find(x => x.id === AL.edit);
+  if (a) Object.assign(a, vals); else S.alarm.list.push({ id: uid(), ...vals });
+  alEditEnd(); save('alarm'); renderAlarm();
 });
 // the iPhone app reports whether iOS let it set the alarms
 window.axiomAlarmStatus = st => { AL.st = st || null; renderAlarm(); };
 window.axiomAlarmPlan = () => alarmsForNative();
-// browser only: ring while the page is open
-function alRing(x) {
-  AL.ringing = x; unlockAudio();
-  $('#alRT').textContent = alFmt(x)[0]; $('#alRW').textContent = x.title; $('#alRS').textContent = x.sub || '';
+// the ringing screen: in the app iOS plays the sound and this is the screen you see while using the phone; in a browser it rings too
+function alShow(x) {
+  AL.ringing = x;
+  const now = new Date();
+  $('#alRD').textContent = 'Alarm · ' + DAYN[now.getDay()];
+  $('#alRT').textContent = x.h != null ? alHM(x) : `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  $('#alRW').textContent = x.title || 'Alarm'; $('#alRS').textContent = x.sub && x.sub !== 'Once' ? x.sub : '';
+  $('#alRSn').textContent = `Snooze ${S.alarm.snooze}`;
   $('#alRing').hidden = false; $('#alRStop').focus();
-  clearInterval(AL.rt); ring(); AL.rt = setInterval(ring, 3000);
-  setTimeout(() => { if (AL.ringing === x) alStop(); }, 10 * 60e3);
 }
-function alStop() { clearInterval(AL.rt); AL.ringing = null; $('#alRing').hidden = true; renderAlarm(); }
-$('#alRStop').onclick = alStop;
-$('#alRSn').onclick = () => { const x = AL.ringing; if (!x) return; AL.snoozed.push({ ...x, when: Date.now() + S.alarm.snooze * 60e3, title: x.title, snz: true }); alStop(); };
+function alHide() { clearInterval(AL.rt); AL.ringing = null; $('#alRing').hidden = true; renderAlarm(); }
+function alRing(x) { // browser only
+  unlockAudio(); alShow(x); clearInterval(AL.rt); ring(); AL.rt = setInterval(ring, 3000);
+  setTimeout(() => { if (AL.ringing === x) alHide(); }, 10 * 60e3);
+}
+function alNative(action) { // the app stops or snoozes the alarm iOS is ringing
+  try { const h = window.webkit.messageHandlers.axiomAlarm; h.postMessage(JSON.stringify({ action, id: AL.ringing.id })); return true; } catch (e) { return false; }
+}
+window.axiomAlarmRinging = x => { if (x && x.id) alShow(x); else if (AL.ringing && AL.ringing.id) alHide(); };
+$('#alRStop').onclick = () => { if (AL.ringing && AL.ringing.id) alNative('stop'); alHide(); };
+$('#alRSn').onclick = () => { const x = AL.ringing; if (!x) return;
+  if (x.id) alNative('snooze'); else AL.snoozed.push({ ...x, when: Date.now() + S.alarm.snooze * 60e3 });
+  alHide(); };
 setInterval(() => {
   if (nativeH()) return;   // the app hands alarms to iOS instead
   const now = Date.now(), from = AL.last; AL.last = now;
   if (AL.ringing || now - from > 5 * 60e3) return;   // the page was asleep: don't ring for something long gone
   const due = AL.snoozed.find(x => x.when > from && x.when <= now);
   if (due) { AL.snoozed = AL.snoozed.filter(x => x !== due); alRing(due); return; }
-  const x = alarmsForNative(from).list.map(x => ({ ...x, when: x.at || alNextLocal({ h: x.h, m: x.m, days: x.days }, from) })).find(x => x.when && x.when > from && x.when <= now);
+  const x = alarmsForNative(from).list.map(x => ({ ...x, when: alWhen(x, from) })).find(x => x.when && x.when > from && x.when <= now);
   if (x) alRing(x);
 }, 5000);
 
@@ -2553,8 +2540,8 @@ const WIDGETS = [
   { id: 'pa', name: 'PA helper', w: 1, on: false }, { id: 'nato', name: 'Phonetic speller', w: 1, on: false },
   { id: 'units', name: 'Unit converter', w: 1, on: false }, { id: 'water', name: 'Water', w: 1, on: false }
 ];
-const GROUPS = [['Roster & duty', ['cal', 'day', 'agenda', 'ftl', 'fdp', 'wake', 'alarm', 'lay', 'docs']], ['On board', ['pa', 'nato', 'units']],
-  ['Travel & time', ['ticker', 'clock', 'world', 'tconv', 'wx', 'globe', 'sun', 'fx', 'exp']], ['Everyday', ['year', 'todo', 'shop', 'notes', 'count', 'bag', 'timer', 'links', 'water']]];
+const GROUPS = [['Roster & duty', ['cal', 'day', 'agenda', 'ftl', 'fdp', 'wake', 'lay', 'docs']], ['On board', ['pa', 'nato', 'units']],
+  ['Travel & time', ['ticker', 'clock', 'world', 'tconv', 'wx', 'globe', 'sun', 'fx', 'exp']], ['Everyday', ['alarm', 'year', 'todo', 'shop', 'notes', 'count', 'bag', 'timer', 'links', 'water']]];
 const WN = Object.fromEntries(WIDGETS.map(w => [w.id, w.name])), WD = Object.fromEntries(WIDGETS.map(w => [w.id, w]));
 function layout() { // saved order + any widget added in a later version
   const saved = (S.layout || []).filter(x => WN[x.id]).map(x => ({ id: x.id, on: !!x.on, pin: !!x.pin, w: x.w || x.size || WD[x.id].w, h: x.h || 0 }));

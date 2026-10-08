@@ -5,12 +5,12 @@ The Axiom dashboard as an iPhone app, with Home Screen and Lock Screen widgets. 
 ## What's inside
 
 - **The dashboard:** the same Axiom file, full screen, working offline, with your data saved on the phone.
-- **Alarm clock:** an alarm before every duty on your roster (the Wake-up planner's time, with an optional backup), plus alarms of your own with repeat days. On iOS 26 and later they ring like the Clock app, even when the phone is locked, on silent or in Focus; earlier iOS shows them as notifications.
+- **Alarm clock:** alarms with a time, a label and repeat days, like the Clock app, in Axiom's dots. On iOS 26 and later they ring even when the phone is locked, on silent or in Focus, and a snoozed alarm counts down on the Lock Screen in dots. Earlier iOS shows them as notifications.
 - **19 widgets** (touch and hold the Home Screen, tap **Edit**, **Add Widget**, search "Axiom"):
   - **Roster:** Next duty (small, medium, large departure board; turns yellow, then red, before report), Flight progress (a dot moving along the sector while you fly), Globe (the dot-matrix globe zoomed to your route in red), Next 7 days, Roster month.
   - **Time:** Clock (Bangkok in big dots, with UTC), World clock (your cities, live), Year (days left, every day as a dot).
-  - **Crew:** Duty hours (7/14/28-day duty and 28-day flying against the limits), Rest (rest so far and when you're legal again), Wake-up (alarm, bedtime, leave home), Next alarm, Layover (local time, hotel, pickup countdown).
-  - **Everyday:** Weather (updates by itself), Sun (sunrise, sunset and the sun's path), Water (+ adds a glass), To-do and Shopping (tick items off on the Home Screen), Countdown.
+  - **Crew:** Duty hours (7/14/28-day duty and 28-day flying against the limits), Rest (rest so far and when you're legal again), Wake-up (alarm, bedtime, leave home), Layover (local time, hotel, pickup countdown).
+  - **Everyday:** Weather (updates by itself), Sun (sunrise, sunset and the sun's path), Water (+ adds a glass), Next alarm, To-do and Shopping (tick items off on the Home Screen), Countdown.
   - **Lock Screen:** Next duty, Flight progress, Wake-up, Next alarm, snooze countdown, Countdown, Duty hours, Water and Year.
 
 The widgets read what Axiom last saved. Open the app after importing a new eCrew PDF and the widgets update.
