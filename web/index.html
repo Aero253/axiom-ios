@@ -271,6 +271,27 @@ input.inp[type=time]::-webkit-datetime-edit, input.inp[type=date]::-webkit-datet
 .alpick .wi b{display:block; font:inherit; backface-visibility:hidden; will-change:transform}   /* only the number turns; the row stays put so it snaps cleanly */
 .alpick .wi.on{opacity:1}
 .alpick .co{font:900 calc(40px / var(--z))/1 var(--f-led); color:var(--ink)}
+/* split-flap style: each number is a card cut across the middle; the top half falls to show the next number */
+.alpick .flip{display:none}
+.alpick.flipm::before, .alpick.flipm .wheel{display:none}
+.alpick.flipm .flip{display:block}
+.alpick.flipm{gap:calc(10px / var(--z))}
+.flip{--fh:calc(104px / var(--z)); --fw:calc(112px / var(--z)); --fr:calc(10px / var(--z)); position:relative; width:var(--fw); height:var(--fh); perspective:calc(420px / var(--z));
+  touch-action:none; cursor:ns-resize; outline:none; border-radius:var(--fr); -webkit-tap-highlight-color:transparent}
+.flip:focus-visible{outline:1.5px dashed var(--faint); outline-offset:3px}
+.flip .h{position:absolute; left:0; right:0; height:50%; overflow:hidden; background:var(--raise); border:1px solid var(--line); backface-visibility:hidden; -webkit-backface-visibility:hidden}
+.flip .h.t{top:0; border-radius:var(--fr) var(--fr) 0 0; border-bottom:0; transform-origin:50% 100%}
+.flip .h.b{bottom:0; border-radius:0 0 var(--fr) var(--fr); border-top:0; transform-origin:50% 0}
+.flip .h b{position:absolute; left:0; right:0; height:var(--fh); box-sizing:border-box; padding-top:calc(76px / var(--z) * .74 / 7); display:grid; place-items:center; font:900 calc(76px / var(--z))/1 var(--f-led); color:var(--ink)}   /* nudged half a dot down so the hinge runs between two rows of dots */
+.flip .h.t b{top:0}
+.flip .h.b b{top:calc(var(--fh) / -2)}
+.flip .h.f{z-index:2; visibility:hidden}
+.flip .h.f.go{visibility:visible}
+.flip .h.t.f.go{box-shadow:inset 0 -18px 18px -14px rgba(0,0,0,.35)}
+.flip::after{content:""; position:absolute; left:-1px; right:-1px; top:50%; height:2px; margin-top:-1px; background:var(--panel, var(--bg)); z-index:4; pointer-events:none}   /* the hinge */
+.alpick .co.fc{display:none}
+.alpick.flipm .co.wc{display:none}
+.alpick.flipm .co.fc{display:block; font-size:calc(48px / var(--z))}
 .alf .r2{display:flex; gap:8px 12px; align-items:center; justify-content:space-between; flex-wrap:wrap}
 .alf .grp{display:flex; gap:4px; align-items:center; flex-wrap:wrap}
 .alf .grp .lbl{margin-right:2px}
@@ -800,11 +821,11 @@ body.calm *, body.calm *::before, body.calm *::after{animation:none!important; t
       <div id="alNext"></div>
       <ul class="list al" id="alList" aria-label="Alarms"></ul>
       <form class="alf" id="alForm">
-        <div class="alpick" id="alPick" role="group" aria-label="Alarm time"><div class="wheel" id="alWH" tabindex="0" role="spinbutton" aria-label="Hour" aria-valuemin="0" aria-valuemax="23"></div><span class="co" aria-hidden="true">:</span><div class="wheel" id="alWM" tabindex="0" role="spinbutton" aria-label="Minute" aria-valuemin="0" aria-valuemax="59"></div></div>
+        <div class="alpick" id="alPick" role="group" aria-label="Alarm time"><div class="wheel" id="alWH" tabindex="0" role="spinbutton" aria-label="Hour" aria-valuemin="0" aria-valuemax="23"></div><div class="flip" id="alFH" tabindex="0" role="spinbutton" aria-label="Hour" aria-valuemin="0" aria-valuemax="23"></div><span class="co wc" aria-hidden="true">:</span><span class="co fc" aria-hidden="true">:</span><div class="wheel" id="alWM" tabindex="0" role="spinbutton" aria-label="Minute" aria-valuemin="0" aria-valuemax="59"></div><div class="flip" id="alFM" tabindex="0" role="spinbutton" aria-label="Minute" aria-valuemin="0" aria-valuemax="59"></div></div>
         <input type="hidden" id="alTime" value="07:00">
         <div class="r"><input class="inp" id="alLabel" placeholder="Label" maxlength="40" autocomplete="off" aria-label="Label"><button class="btn pri ico" id="alAdd" data-ic="plus" aria-label="Add alarm" title="Add alarm"></button></div>
         <div class="r2"><div class="aldays" id="alDays" role="group" aria-label="Repeat on"></div><button type="button" class="btn ghost ico" id="alCancel" data-ic="x" aria-label="Cancel editing" title="Cancel editing" hidden></button></div>
-        <div class="r2"><div class="grp" role="group" aria-label="Snooze length"><span class="lbl">Snooze min</span><span id="alSn"></span></div></div>
+        <div class="r2"><div class="grp" role="group" aria-label="Snooze length"><span class="lbl">Snooze min</span><span id="alSn"></span></div><div class="grp" role="group" aria-label="Time picker style"><span class="lbl">Picker</span><span id="alPk"></span></div></div>
       </form>
       <div class="note" id="alNote"></div>
     </section></div>
@@ -1204,7 +1225,7 @@ const BAG_DEFAULT = ['Passport', 'Crew ID card', 'Cabin crew licence', 'Name bad
 const S = { roster: { duties: [], name: '', base: 'DMK', importedAt: '' }, events: [], todos: [], shopping: [], notes: '', world: ['NRT', 'SIN'], whide: [], layout: [],
   count: [], bag: BAG_DEFAULT.map((t, i) => ({ id: 'b' + i, text: t, done: false })), fx: FX_DEFAULT.slice(),
   links: [{ id: 'swap', label: 'SL Swap Check', url: 'https://aero253.github.io/SL-Roster-swap-checker/' }],
-  docs: [], exp: [], lay: {}, wake: { travel: 60, ready: 45, sleep: 8 }, alarm: { snooze: 9, list: [] }, water: { date: '', n: 0, goal: 8 }, places: { sun: { add: [], hide: [] }, wx: { add: [], hide: [] } }, pa: { tpl: '' } };
+  docs: [], exp: [], lay: {}, wake: { travel: 60, ready: 45, sleep: 8 }, alarm: { snooze: 9, pick: 'flip', list: [] }, water: { date: '', n: 0, goal: 8 }, places: { sun: { add: [], hide: [] }, wx: { add: [], hide: [] } }, pa: { tpl: '' } };
 const V = { month: todayISO().slice(0, 7), sel: todayISO(), wx: 'DMK', msg: null };
 
 /* Example month shown only until a roster is imported. Never saved. */
@@ -2218,6 +2239,8 @@ function renderAlarm() {
   alTidy();
   const A = S.alarm, now = Date.now(), [st, note] = alStatus();
   $('#alSt').textContent = st; $('#alNote').textContent = note;
+  $('#alPk').innerHTML = [['flip', 'Flip'], ['roll', 'Roll']].map(([k, l]) => `<button type="button" class="tab" data-alpk="${k}" aria-pressed="${(A.pick || 'flip') === k}">${l}</button>`).join('');
+  $('#alPick').classList.toggle('flipm', (A.pick || 'flip') === 'flip');
   $('#alSn').innerHTML = [5, 9, 15].map(v => `<button type="button" class="tab" data-alsn="${v}" aria-pressed="${A.snooze === v}">${v}</button>`).join('');
   const nx = alUpcoming()[0];
   $('#alNext').innerHTML = nx ? `<div class="alhd"><div class="bign">${alHM(nx)}</div><div class="in">in ${dur(nx.when - now).replace(/^00H /, '').toLowerCase()}</div>
@@ -2236,6 +2259,7 @@ function alEditEnd() { AL.edit = null; alDays = []; $('#alLabel').value = ''; }
 $('#pAlarm').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return; const d = b.dataset, A = S.alarm;
   if (d.alsn != null) { A.snooze = +d.alsn; }
+  else if (d.alpk) { A.pick = d.alpk; save('alarm'); renderAlarm(); alFlipShow($('#alFH')); alFlipShow($('#alFM')); return; }
   else if (d.alon) { const a = A.list.find(x => x.id === d.alon); if (!a) return; a.on = !a.on; if (a.on) a.armed = Date.now(); }
   else if (d.aldel) { A.list = A.list.filter(x => x.id !== d.aldel); if (AL.edit === d.aldel) alEditEnd(); }
   else if (d.aledit) { const a = A.list.find(x => x.id === d.aledit); if (!a) return;
@@ -2291,7 +2315,7 @@ function alWheelPaint(el) { // light the number in the band and tilt its neighbo
     if (kids[idx + 1]) kids[idx + 1].classList.add('on');
     const v = ((idx % el._n) + el._n) % el._n, jumped = el._idx === -2;
     el._idx = idx;
-    if (!jumped && v !== el._v) { el._v = v; alPicked(true); }
+    if (!jumped && v !== el._v) { el._v = v; alPicked(true); const f = el.id === 'alWH' ? $('#alFH') : $('#alFM'); if (f && f._n && !f._busy) alFlipShow(f); }
   }
 }
 function alWheelSettle(el) { // back to the middle copy of the numbers, so there's always room to keep flicking
@@ -2316,10 +2340,88 @@ function alPicked(fromWheel) { // the drums are the source of truth; the hidden 
   $('#alTime').value = `${pad(h)}:${pad(m)}`;
   $('#alWH').setAttribute('aria-valuenow', h); $('#alWH').setAttribute('aria-valuetext', pad(h));
   $('#alWM').setAttribute('aria-valuenow', m); $('#alWM').setAttribute('aria-valuetext', pad(m));
+  ['#alFH', '#alFM'].forEach((id, i) => { const el = $(id); if (el) { el.setAttribute('aria-valuenow', i ? m : h); el.setAttribute('aria-valuetext', pad(i ? m : h)); } });
   if (fromWheel) { try { window.webkit.messageHandlers.axiomAlarm.postMessage(JSON.stringify({ action: 'tick' })); } catch (e) {} }   // a light click in the iPhone app
 }
-function alPickSet(h, m, smooth) { alWheelSet($('#alWH'), h, smooth); alWheelSet($('#alWM'), m, smooth); $('#alWH')._v = h; $('#alWM')._v = m; alPicked(false); }
+function alPickSet(h, m, smooth) {
+  alWheelSet($('#alWH'), h, smooth); alWheelSet($('#alWM'), m, smooth); $('#alWH')._v = h; $('#alWM')._v = m; alPicked(false);
+  alFlipTo($('#alFH'), h, smooth); alFlipTo($('#alFM'), m, smooth);
+}
+/* split-flap cards. Swipe up for the next number, down for the one before; a quick flick keeps the flaps falling for a while.
+   Each card has four halves: the still top and bottom, and the two flaps that turn over the hinge. */
+function alFlip(el, wheel, n) {
+  el.innerHTML = '<div class="h t s"><b></b></div><div class="h b s"><b></b></div><div class="h t f"><b></b></div><div class="h b f"><b></b></div>';
+  Object.assign(el, { _n: n, _w: wheel, _shown: 0, _q: 0, _busy: false });
+  alFlipShow(el);
+  let y0 = 0, last = 0, acc = 0, moved = 0, hist = [], down = false;
+  const STEP = 24;
+  el.addEventListener('pointerdown', e => { down = true; try { el.setPointerCapture(e.pointerId); } catch (x) {} y0 = last = e.clientY; acc = 0; moved = 0; hist = [[e.timeStamp, e.clientY]]; el.focus({ preventScroll: true }); });
+  el.addEventListener('pointermove', e => {
+    if (!down) return;
+    const dy = last - e.clientY; last = e.clientY; acc += dy; moved += Math.abs(dy);
+    hist.push([e.timeStamp, e.clientY]); if (hist.length > 6) hist.shift();
+    while (acc >= STEP) { acc -= STEP; alFlipStep(el, 1); }
+    while (acc <= -STEP) { acc += STEP; alFlipStep(el, -1); }
+  });
+  const up = e => {
+    if (!down) return; down = false;
+    if (moved < 6) { const r = el.getBoundingClientRect(); alFlipStep(el, e.clientY < r.top + r.height / 2 ? 1 : -1); return; }   // a tap: top half up, bottom half down
+    const recent = hist.filter(([t]) => e.timeStamp - t < 120), [t0, ya] = recent[0] || [e.timeStamp, e.clientY];
+    const dt = e.timeStamp - t0, v = dt > 8 ? (ya - e.clientY) / dt : 0;   // px per ms, upward, over the last moment of the swipe
+    if (Math.abs(v) > .5) { const extra = Math.min(20, Math.round(Math.abs(v) * 7)); for (let i = 0; i < extra; i++) alFlipStep(el, Math.sign(v)); }
+  };
+  el.addEventListener('pointerup', up); el.addEventListener('pointercancel', () => { down = false; });
+  let wacc = 0;
+  el.addEventListener('wheel', e => { e.preventDefault(); wacc += e.deltaY; while (wacc >= 40) { wacc -= 40; alFlipStep(el, -1); } while (wacc <= -40) { wacc += 40; alFlipStep(el, 1); } }, { passive: false });
+  el.addEventListener('keydown', e => { const d = { ArrowUp: 1, ArrowDown: -1, PageUp: 5, PageDown: -5 }[e.key]; if (!d) return; e.preventDefault(); for (let i = 0; i < Math.abs(d); i++) alFlipStep(el, Math.sign(d)); });
+}
+function alFlipShow(el) { // no animation: all four halves show the wheel's value
+  const v = pad(el._w._v); el._shown = el._w._v;
+  el.querySelectorAll('b').forEach(b => { if (b.textContent !== v) b.textContent = v; });
+}
+function alFlipStep(el, d) { // the value moves at once; the flaps catch up
+  const w = el._w; w._v = ((w._v + d) % el._n + el._n) % el._n;
+  alWheelSet(w, w._v); alPicked(true);
+  el._q += d; if (!el._busy) alFlipRun(el);
+}
+function alFlipTo(el, v, smooth) {
+  if (!el || el._n == null) return;
+  if (!smooth || el.offsetParent === null) { el._q = 0; alFlipShow(el); return; }
+  let d = ((v - el._shown) % el._n + el._n) % el._n; if (d > el._n / 2) d -= el._n;   // the short way round
+  el._q = d; if (!el._busy && d) alFlipRun(el);
+}
+async function alFlipRun(el) {
+  el._busy = true;
+  const [st, sb, ft, fb] = el.children, B = x => x.firstElementChild, reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  while (el._q) {
+    const d = Math.sign(el._q); el._q -= d;
+    const from = pad(el._shown), to = pad(((el._shown + d) % el._n + el._n) % el._n);
+    el._shown = ((el._shown + d) % el._n + el._n) % el._n;
+    if (reduce || el.offsetParent === null) { alFlipShow(el); continue; }
+    const ms = Math.abs(el._q) > 4 ? 46 : Math.abs(el._q) > 1 ? 80 : 150;   // a long run flips faster, like a board catching up
+    if (d > 0) { // next number: the top flap falls forward
+      B(st).textContent = to; B(sb).textContent = from; B(ft).textContent = from; B(fb).textContent = to;
+      ft.classList.add('go'); fb.classList.add('go'); fb.style.transform = 'rotateX(90deg)';
+      await ft.animate([{ transform: 'rotateX(0deg)' }, { transform: 'rotateX(-90deg)' }], { duration: ms, easing: 'ease-in', fill: 'forwards' }).finished;
+      ft.classList.remove('go');
+      await fb.animate([{ transform: 'rotateX(90deg)' }, { transform: 'rotateX(0deg)' }], { duration: ms * .8, easing: 'cubic-bezier(.3,1.4,.6,1)', fill: 'forwards' }).finished;
+      B(sb).textContent = to;
+    } else { // the number before: the bottom flap lifts back up
+      B(st).textContent = from; B(sb).textContent = to; B(fb).textContent = from; B(ft).textContent = to;
+      ft.classList.add('go'); fb.classList.add('go'); ft.style.transform = 'rotateX(-90deg)';
+      await fb.animate([{ transform: 'rotateX(0deg)' }, { transform: 'rotateX(90deg)' }], { duration: ms, easing: 'ease-in', fill: 'forwards' }).finished;
+      fb.classList.remove('go');
+      await ft.animate([{ transform: 'rotateX(-90deg)' }, { transform: 'rotateX(0deg)' }], { duration: ms * .8, easing: 'cubic-bezier(.3,1.4,.6,1)', fill: 'forwards' }).finished;
+      B(st).textContent = to;
+    }
+    ft.classList.remove('go'); fb.classList.remove('go');
+    ft.getAnimations().forEach(a => a.cancel()); fb.getAnimations().forEach(a => a.cancel()); ft.style.transform = fb.style.transform = '';
+  }
+  alFlipShow(el);
+  el._busy = false;
+}
 alWheel($('#alWH'), ALW.H.n, ALW.H.rep); alWheel($('#alWM'), ALW.M.n, ALW.M.rep);
+alFlip($('#alFH'), $('#alWH'), 24); alFlip($('#alFM'), $('#alWM'), 60);
 { const d = new Date(Date.now() + 60 * 60e3); alPickSet(d.getHours(), 0); }   // starts on the next full hour
 // the iPhone app reports whether iOS let it set the alarms
 window.axiomAlarmStatus = st => { AL.st = st || null; renderAlarm(); };
