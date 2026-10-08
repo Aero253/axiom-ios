@@ -162,17 +162,17 @@ final class AlarmScheduler {
 
     @available(iOS 26.0, *)
     nonisolated static func configuration(for item: AlarmItem, schedule: Alarm.Schedule, snooze: Int) -> AlarmManager.AlarmConfiguration<AxiomAlarmMeta> {
-        // Axiom's black and white: the iPhone draws this screen, Axiom picks its words, buttons and colour
+        // the iPhone draws this screen; Axiom picks its words, buttons and the ticker alert's caution yellow
         let alert = AlarmPresentation.Alert(
             title: LocalizedStringResource(stringLiteral: item.title),
             stopButton: AlarmButton(text: "Stop", textColor: .white, systemImageName: "stop.fill"),
-            secondaryButton: AlarmButton(text: "Snooze \(snooze)", textColor: .black, systemImageName: "zzz"),
+            secondaryButton: AlarmButton(text: "Snooze \(snooze)", textColor: .black, systemImageName: "zzz"),   // black on yellow
             secondaryButtonBehavior: .countdown)
         let countdown = AlarmPresentation.Countdown(title: LocalizedStringResource(stringLiteral: "Snooze · " + item.title), pauseButton: nil)
         let attributes = AlarmAttributes<AxiomAlarmMeta>(
             presentation: AlarmPresentation(alert: alert, countdown: countdown),
             metadata: AxiomAlarmMeta(title: item.title, sub: item.sub ?? ""),
-            tintColor: .white)
+            tintColor: Color(red: 1.0, green: 0.769, blue: 0.0))
         return AlarmManager.AlarmConfiguration<AxiomAlarmMeta>(
             countdownDuration: Alarm.CountdownDuration(preAlert: nil, postAlert: TimeInterval(max(1, snooze) * 60)),
             schedule: schedule,

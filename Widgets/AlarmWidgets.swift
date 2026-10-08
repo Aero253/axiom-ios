@@ -110,7 +110,7 @@ struct SnoozeCard: View {
                     Image(systemName: "zzz").font(.system(size: 11, weight: .bold))
                     Text("SNOOZE").font(Ax.mono(11, .bold)).tracking(1.2)
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(Ax.yellow)
                 Text(title).font(Ax.mono(15, .bold)).foregroundStyle(.white).lineLimit(1)
                 if !sub.isEmpty { Text(sub).font(Ax.mono(11)).foregroundStyle(.white.opacity(0.6)).lineLimit(1) }
             }
@@ -123,12 +123,32 @@ struct SnoozeCard: View {
                 }
             }
             .font(.axiomDots(34))
-            .foregroundStyle(.white)
+            .foregroundStyle(Ax.yellow)
             .multilineTextAlignment(.trailing)
             .frame(maxWidth: 150, alignment: .trailing)
         }
         .padding(.horizontal, 18)
-        .padding(.vertical, 14)
+        .padding(.vertical, 18)
+        .overlay(alignment: .top) { CautionTape().frame(height: 6) }       // the LED ticker's yellow and black alert tape
+        .overlay(alignment: .bottom) { CautionTape().frame(height: 6) }
+    }
+}
+
+/// Yellow and black diagonal stripes, as on the dashboard's ticker when report time is close.
+struct CautionTape: View {
+    var body: some View {
+        Canvas { ctx, size in
+            ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Color(white: 0.07)))
+            let w: CGFloat = 9
+            var x: CGFloat = -size.height
+            while x < size.width + size.height {
+                var p = Path()
+                p.move(to: CGPoint(x: x, y: size.height)); p.addLine(to: CGPoint(x: x + size.height, y: 0))
+                p.addLine(to: CGPoint(x: x + size.height + w, y: 0)); p.addLine(to: CGPoint(x: x + w, y: size.height)); p.closeSubpath()
+                ctx.fill(p, with: .color(Ax.yellow))
+                x += w * 2
+            }
+        }
     }
 }
 
@@ -150,26 +170,26 @@ struct AlarmLiveActivity: Widget {
                        fireDate: Self.fireDate(context.state),
                        remaining: Self.remaining(context.state))
                 .activityBackgroundTint(.black)
-                .activitySystemActionForegroundColor(.white)
+                .activitySystemActionForegroundColor(Ax.yellow)
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    Label("Snooze", systemImage: "zzz").font(Ax.mono(12, .bold)).foregroundStyle(.white)
+                    Label("Snooze", systemImage: "zzz").font(Ax.mono(12, .bold)).foregroundStyle(Ax.yellow)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    Self.countdown(context.state).font(.axiomDots(22)).foregroundStyle(.white)
+                    Self.countdown(context.state).font(.axiomDots(22)).foregroundStyle(Ax.yellow)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     Text(context.attributes.metadata?.title ?? "Alarm").font(Ax.mono(13)).lineLimit(1)
                 }
             } compactLeading: {
-                Image(systemName: "alarm.fill").foregroundStyle(.white)
+                Image(systemName: "alarm.fill").foregroundStyle(Ax.yellow)
             } compactTrailing: {
-                Self.countdown(context.state).font(.axiomDots(13)).foregroundStyle(.white).frame(maxWidth: 56)
+                Self.countdown(context.state).font(.axiomDots(13)).foregroundStyle(Ax.yellow).frame(maxWidth: 56)
             } minimal: {
-                Image(systemName: "zzz").foregroundStyle(.white)
+                Image(systemName: "zzz").foregroundStyle(Ax.yellow)
             }
-            .keylineTint(.white)
+            .keylineTint(Ax.yellow)
         }
     }
 

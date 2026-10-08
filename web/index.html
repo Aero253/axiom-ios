@@ -286,17 +286,35 @@ input.inp[type=time]::-webkit-datetime-edit, input.inp[type=date]::-webkit-datet
 .alf .grp .lbl{margin-right:2px}
 .aldays{display:flex; gap:4px; flex-wrap:wrap}
 .aldays .tab{min-width:calc(var(--tap) * .8 / var(--z)); padding:5px 0}
-#alRing{position:fixed; inset:0; z-index:200; display:grid; place-items:center; background:#000; color:#fff; padding:24px; text-align:center;
-  --ink:#fff; --dim:rgba(255,255,255,.6); --unlit:rgba(255,255,255,.1); --line:rgba(255,255,255,.3)}
+#alRing{position:fixed; inset:0; z-index:200; display:grid; place-items:center; background:#000; color:#fff; padding:40px 0; text-align:center; overflow:hidden;
+  --ink:currentColor; --dim:currentColor; --line:currentColor}
 #alRing[hidden]{display:none}
-#alRing .d{font:600 12px/1 var(--f-mono); letter-spacing:.22em; text-transform:uppercase}
-#alRing .t{font:900 clamp(80px, 30vw, 190px)/.9 var(--f-led); font-variant-numeric:tabular-nums; margin-top:18px; animation:blink 1s steps(2) infinite}
-#alRing .w{font:700 18px/1.3 var(--f-mono); margin-top:22px; letter-spacing:.08em; text-transform:uppercase}
-#alRing .s{font:500 13px/1.3 var(--f-mono); color:var(--dim); margin-top:6px; min-height:1em}
+#alRing > div{width:100%; min-width:0}
+/* the LED ticker's caution alert, full screen: yellow and black tape running along the top and bottom, the screen flashing yellow */
+#alRing::before, #alRing::after{content:""; position:absolute; left:0; right:0; height:16px; z-index:2; pointer-events:none;
+  background:repeating-linear-gradient(-45deg, #ffc400 0 14px, #111 14px 28px); background-size:39.6px 16px}
+#alRing::before{top:env(safe-area-inset-top, 0px)} #alRing::after{bottom:env(safe-area-inset-bottom, 0px)}
+#alRing .dm .u{fill:currentColor; opacity:.13}
+#alRing .tk{overflow:hidden; white-space:nowrap; border-block:2px solid currentColor; padding:10px 0; -webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent); mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)}
+#alRing .tkr{display:inline-flex; font:700 26px/1 var(--f-led); animation:tick 9s linear infinite}
+#alRing .tkr span{padding-right:1.4em}
+#alRing .t{font:900 clamp(80px, 30vw, 190px)/.9 var(--f-led); font-variant-numeric:tabular-nums; margin-top:34px}
+#alRing .w{font:700 18px/1.3 var(--f-mono); margin-top:22px; letter-spacing:.08em; text-transform:uppercase; padding:0 24px}
+#alRing .s{font:500 13px/1.3 var(--f-mono); opacity:.7; margin-top:6px; min-height:1em}
 #alRing .b{display:flex; gap:12px; justify-content:center; margin-top:34px; flex-wrap:wrap}
 #alRing .b button{appearance:none; font:700 15px/1 var(--f-mono); letter-spacing:.1em; text-transform:uppercase; padding:16px 26px; border-radius:999px; cursor:pointer}
-#alRing #alRSn{background:transparent; color:#fff; border:1.5px solid rgba(255,255,255,.4)}
-#alRing #alRStop{background:#fff; color:#000; border:1.5px solid #fff; padding-left:34px; padding-right:34px}
+#alRing #alRSn{background:transparent; color:inherit; border:2px solid currentColor}
+#alRing .b button:focus{outline:none} #alRing .b button:focus-visible{outline:2px dashed currentColor; outline-offset:4px}
+#alRing #alRStop{background:#ffc400; color:#111; border:2px solid #ffc400; padding-left:34px; padding-right:34px}
+@keyframes alTape{to{background-position:39.6px 0}}
+@keyframes alFlash{0%{background:#ffc400; color:#111} 50%{background:#000; color:#ffc400}}
+@keyframes alFlashB{0%{background:#111; color:#ffc400; border-color:#111} 50%{background:#ffc400; color:#111; border-color:#ffc400}}
+@media (prefers-reduced-motion: no-preference){
+  #alRing:not([hidden]){animation:alFlash 1s step-end infinite}
+  #alRing:not([hidden]) #alRStop{animation:alFlashB 1s step-end infinite}
+  #alRing::before, #alRing::after{animation:alTape 1.2s linear infinite}
+}
+@media (prefers-reduced-motion: reduce){ #alRing{background:#ffc400; color:#111} #alRing #alRStop{background:#111; color:#ffc400; border-color:#111} #alRing .tkr{animation:none} }
 .cdl{list-style:none; margin:0; padding:0; display:grid; gap:8px}
 .cdl li.cd{display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:12px; align-items:center; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:var(--raise)}
 .cdl .n{font:900 34px/.9 var(--f-led); min-width:2ch; text-align:right; font-variant-numeric:tabular-nums}
@@ -625,7 +643,7 @@ body.calm *, body.calm *::before, body.calm *::after{animation:none!important; t
 </style>
 </head>
 <body class="booting">
-<div id="alRing" hidden role="alertdialog" aria-live="assertive" aria-label="Alarm"><div><div class="d" id="alRD"></div><div class="t" id="alRT"></div><div class="w" id="alRW"></div><div class="s" id="alRS"></div><div class="b"><button id="alRSn">Snooze</button><button id="alRStop">Stop</button></div></div></div>
+<div id="alRing" hidden role="alertdialog" aria-live="assertive" aria-label="Alarm"><div><div class="tk" aria-hidden="true"><div class="tkr" id="alRD"></div></div><div class="t" id="alRT"></div><div class="w" id="alRW"></div><div class="s" id="alRS"></div><div class="b"><button id="alRSn">Snooze</button><button id="alRStop">Stop</button></div></div></div>
 <canvas id="bgdots" aria-hidden="true"></canvas>
 <div id="splash" hidden aria-hidden="true"><canvas id="splashCv"></canvas></div>
 <div class="wrap">
@@ -2395,11 +2413,13 @@ window.axiomAlarmPlan = () => alarmsForNative();
 function alShow(x) {
   AL.ringing = x;
   const now = new Date();
-  $('#alRD').textContent = 'Alarm · ' + DAYN[now.getDay()];
-  $('#alRT').textContent = x.h != null ? alHM(x) : `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  const tm = x.h != null ? alHM(x) : `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  const msg = `<span>ALARM</span><span>${esc(x.title || 'Alarm')}</span><span>${tm}</span><span>${DAYN[now.getDay()]}</span>`;
+  $('#alRD').innerHTML = msg + msg + msg + msg;   // runs across like the LED ticker; four copies so the loop is seamless
+  $('#alRT').textContent = tm;
   $('#alRW').textContent = x.title || 'Alarm'; $('#alRS').textContent = x.sub && x.sub !== 'Once' ? x.sub : '';
   $('#alRSn').textContent = `Snooze ${S.alarm.snooze}`;
-  $('#alRing').hidden = false; $('#alRStop').focus();
+  $('#alRing').hidden = false;
 }
 function alHide() { clearInterval(AL.rt); AL.ringing = null; $('#alRing').hidden = true; renderAlarm(); }
 function alRing(x) { // browser only
