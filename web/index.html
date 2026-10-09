@@ -271,6 +271,28 @@ input.inp[type=time]::-webkit-datetime-edit, input.inp[type=date]::-webkit-datet
 .alpick .wi b{display:block; font:inherit; backface-visibility:hidden; will-change:transform}   /* only the number turns; the row stays put so it snaps cleanly */
 .alpick .wi.on{opacity:1}
 .alpick .co{font:900 calc(40px / var(--z))/1 var(--f-led); color:var(--ink)}
+/* the set-alarm page: opened by + or by tapping an alarm */
+#alSheet{position:fixed; inset:0; z-index:150; background:var(--bg); color:var(--ink); overflow:auto; overscroll-behavior:contain;
+  padding:calc(env(safe-area-inset-top, 0px) + 14px) 16px calc(env(safe-area-inset-bottom, 0px) + 24px); animation:alUp .22s cubic-bezier(.2,.8,.2,1)}
+#alSheet[hidden]{display:none}
+@keyframes alUp{from{transform:translateY(24px); opacity:0}}
+@media (prefers-reduced-motion: reduce){ #alSheet{animation:none} }
+#alSheet .alsh{width:min(100%, 480px); margin:0 auto; border:0; background:transparent; padding:0; gap:26px; min-height:100%}
+#alSheet .ph h2{flex:1; text-align:center}
+#alSheet .alf{display:grid; gap:24px}
+#alSheet .alpick{--ih:72px; margin:28px 0 8px}
+#alSheet .alpick .alclk{font-size:112px}
+#alSheet .alclk .ar{padding:12px 34px}
+#alSheet .alclk .ar .ic{width:24px; height:24px}
+#alSheet .alpick .wheel{width:132px}
+#alSheet .alpick .wi, #alSheet .alpick .co{font-size:52px}
+#alSheet .aldays{justify-content:space-between}
+#alSheet .aldays .tab{flex:1; min-height:48px; font-size:14px}
+#alSheet .aldel{margin-top:auto; align-self:center; text-transform:none}
+.alnew{display:flex; justify-content:center}
+.alnew .btn{width:calc(var(--tap) * 1.35 / var(--z)); height:calc(var(--tap) * 1.35 / var(--z))}
+.alnew .ic{width:calc(22px / var(--z)); height:calc(22px / var(--z))}
+.al .ed .tm{font-size:28px}
 /* clock style: the same big dot digits as the dashboard clock; swipe a number up or down and the dots that change pop in */
 .alpick .alclk{display:none}
 .alpick.flipm::before, .alpick.flipm .wheel, .alpick.flipm .co.wc{display:none}
@@ -649,6 +671,17 @@ body.calm *, body.calm *::before, body.calm *::after{animation:none!important; t
 </head>
 <body class="booting">
 <div id="alRing" hidden role="alertdialog" aria-live="assertive" aria-label="Alarm"><div><div class="tk" aria-hidden="true"><div class="tkr" id="alRD"></div></div><div class="t" id="alRT"></div><div class="w" id="alRW"></div><div class="s" id="alRS"></div><div class="b"><button id="alRSn">Snooze</button><button id="alRStop">Stop</button></div></div></div>
+<div id="alSheet" hidden><section class="p alsh" role="dialog" aria-modal="true" aria-labelledby="alShT">
+  <div class="ph"><button type="button" class="btn ghost ico" id="alCancel" data-ic="x" aria-label="Cancel" title="Cancel"></button><h2 id="alShT">New alarm</h2><button type="submit" form="alForm" class="btn pri ico" id="alAdd" data-ic="check" aria-label="Save alarm" title="Save alarm"></button></div>
+    <form class="alf" id="alForm">
+      <div class="alpick" id="alPick" role="group" aria-label="Alarm time"><div class="wheel" id="alWH" tabindex="0" role="spinbutton" aria-label="Hour" aria-valuemin="0" aria-valuemax="23"></div><span class="co wc" aria-hidden="true">:</span><div class="wheel" id="alWM" tabindex="0" role="spinbutton" aria-label="Minute" aria-valuemin="0" aria-valuemax="59"></div><div class="alclk big" id="alClk"><button type="button" class="ar" data-seg="alFH" data-d="1" aria-label="Hour up" tabindex="-1" data-ic="up"></button><span></span><button type="button" class="ar" data-seg="alFM" data-d="1" aria-label="Minute up" tabindex="-1" data-ic="up"></button><span class="seg" id="alFH" tabindex="0" role="spinbutton" aria-label="Hour" aria-valuemin="0" aria-valuemax="23">00</span><span aria-hidden="true">:</span><span class="seg" id="alFM" tabindex="0" role="spinbutton" aria-label="Minute" aria-valuemin="0" aria-valuemax="59">00</span><button type="button" class="ar" data-seg="alFH" data-d="-1" aria-label="Hour down" tabindex="-1" data-ic="down"></button><span></span><button type="button" class="ar" data-seg="alFM" data-d="-1" aria-label="Minute down" tabindex="-1" data-ic="down"></button></div></div>
+      <input type="hidden" id="alTime" value="07:00">
+      <div class="aldays" id="alDays" role="group" aria-label="Repeat on"></div>
+      <div class="r2"><div class="grp"><span class="lbl">Sound</span><button type="button" class="btn ghost alplay" id="alHear" aria-label="Play the Axiom chime"><span data-ic="play"></span>Axiom chime</button></div></div>
+      <div class="r2"><div class="grp" role="group" aria-label="Snooze length"><span class="lbl">Snooze min</span><span id="alSn"></span></div><div class="grp" role="group" aria-label="Time picker style"><span class="lbl">Picker</span><span id="alPk"></span></div></div>
+    </form>
+  <button type="button" class="btn ghost aldel" id="alDel" hidden>Delete alarm</button>
+</section></div>
 <canvas id="bgdots" aria-hidden="true"></canvas>
 <div id="splash" hidden aria-hidden="true"><canvas id="splashCv"></canvas></div>
 <div class="wrap">
@@ -832,13 +865,7 @@ body.calm *, body.calm *::before, body.calm *::after{animation:none!important; t
       <div class="ph"><h2>Alarm</h2><span class="lbl" id="alSt"></span></div>
       <div id="alNext"></div>
       <ul class="list al" id="alList" aria-label="Alarms"></ul>
-      <form class="alf" id="alForm">
-        <div class="alpick" id="alPick" role="group" aria-label="Alarm time"><div class="wheel" id="alWH" tabindex="0" role="spinbutton" aria-label="Hour" aria-valuemin="0" aria-valuemax="23"></div><span class="co wc" aria-hidden="true">:</span><div class="wheel" id="alWM" tabindex="0" role="spinbutton" aria-label="Minute" aria-valuemin="0" aria-valuemax="59"></div><div class="alclk big" id="alClk"><button type="button" class="ar" data-seg="alFH" data-d="1" aria-label="Hour up" tabindex="-1" data-ic="up"></button><span></span><button type="button" class="ar" data-seg="alFM" data-d="1" aria-label="Minute up" tabindex="-1" data-ic="up"></button><span class="seg" id="alFH" tabindex="0" role="spinbutton" aria-label="Hour" aria-valuemin="0" aria-valuemax="23">00</span><span aria-hidden="true">:</span><span class="seg" id="alFM" tabindex="0" role="spinbutton" aria-label="Minute" aria-valuemin="0" aria-valuemax="59">00</span><button type="button" class="ar" data-seg="alFH" data-d="-1" aria-label="Hour down" tabindex="-1" data-ic="down"></button><span></span><button type="button" class="ar" data-seg="alFM" data-d="-1" aria-label="Minute down" tabindex="-1" data-ic="down"></button></div></div>
-        <input type="hidden" id="alTime" value="07:00">
-        <div class="r2"><div class="aldays" id="alDays" role="group" aria-label="Repeat on"></div><div class="grp"><button type="button" class="btn ghost ico" id="alCancel" data-ic="x" aria-label="Cancel editing" title="Cancel editing" hidden></button><button class="btn pri ico" id="alAdd" data-ic="plus" aria-label="Add alarm" title="Add alarm"></button></div></div>
-        <div class="r2"><div class="grp"><span class="lbl">Sound</span><button type="button" class="btn ghost alplay" id="alHear" aria-label="Play the Axiom chime"><span data-ic="play"></span>Axiom chime</button></div></div>
-        <div class="r2"><div class="grp" role="group" aria-label="Snooze length"><span class="lbl">Snooze min</span><span id="alSn"></span></div><div class="grp" role="group" aria-label="Time picker style"><span class="lbl">Picker</span><span id="alPk"></span></div></div>
-      </form>
+      <div class="alnew"><button type="button" class="btn pri ico" id="alNew" data-ic="plus" aria-label="New alarm" title="New alarm"></button></div>
       <div class="note" id="alNote"></div>
     </section></div>
 
@@ -2257,42 +2284,56 @@ function renderAlarm() {
   $('#alPick').classList.toggle('flipm', (A.pick || 'flip') === 'flip');
   $('#alSn').innerHTML = [5, 9, 15].map(v => `<button type="button" class="tab" data-alsn="${v}" aria-pressed="${A.snooze === v}">${v}</button>`).join('');
   const nx = alUpcoming()[0];
-  $('#alNext').innerHTML = nx ? `<div class="alhd"><div class="bign">${alHM(nx)}</div><div class="in">in ${dur(nx.when - now).replace(/^00H /, '').toLowerCase()}</div>
-      <div class="what">${esc(nx.sub || 'Once')}<small>${alWhenWord(nx.when)}</small></div></div>`
-    : `<div class="empty">No alarm on.</div>`;
-  $('#alList').innerHTML = A.list.length ? A.list.slice().sort((a, b) => a.h * 60 + a.m - b.h * 60 - b.m).map(a => `<li class="it${a.on ? '' : ' off'}${AL.edit === a.id ? ' editing' : ''}">
+  $('#alNext').innerHTML = nx ? `<div class="bign">${alHM(nx)}</div>` : `<div class="empty">No alarm on.</div>`;
+  $('#alList').innerHTML = A.list.length ? A.list.slice().sort((a, b) => a.h * 60 + a.m - b.h * 60 - b.m).map(a => `<li class="it${a.on ? '' : ' off'}">
       <button class="ck" type="button" data-alon="${a.id}" aria-pressed="${!!a.on}" aria-label="${a.on ? 'Turn off' : 'Turn on'} the ${alHM(a)} alarm"></button>
-      <button class="ed" type="button" data-aledit="${a.id}" aria-label="Edit the ${alHM(a)} alarm"><span class="tm">${alHM(a)}</span><span class="tx">${alRep(a.days)}<small>${a.on ? alWhenWord(alNextLocal(a, a.days.length ? Date.now() : Math.max(Date.now(), a.armed || 0))) : 'Off'}</small></span></button>
+      <button class="ed" type="button" data-aledit="${a.id}" aria-label="Edit the ${alHM(a)} alarm"><span class="tm">${alHM(a)}</span></button>
       <button class="x" type="button" data-aldel="${a.id}" aria-label="Delete the ${alHM(a)} alarm">${ic('x')}</button></li>`).join('')
-    : '<li class="empty">No alarms yet. Swipe the time below, pick the days it repeats (or none for once), then tap +.</li>';
+    : '<li class="empty">No alarms yet. Tap + to set one.</li>';
   $('#alDays').innerHTML = DAYL.map((l, i) => `<button type="button" class="tab" data-alday="${i}" aria-pressed="${alDays.includes(i)}" aria-label="${DAYN[i]}">${l}</button>`).join('');
-  const editing = !!AL.edit; $('#alCancel').hidden = !editing;
-  if ($('#alAdd').dataset.mode !== String(editing)) { $('#alAdd').dataset.mode = String(editing); setIc($('#alAdd'), editing ? 'check' : 'plus', editing ? 'Save alarm' : 'Add alarm'); }
+  $('#alShT').textContent = AL.edit ? 'Edit alarm' : 'New alarm'; $('#alDel').hidden = !AL.edit;
 }
 function alEditEnd() { AL.edit = null; alDays = []; }
-$('#pAlarm').addEventListener('click', e => {
+let alBack = null;   // where focus goes back to when the page closes
+function alOpen(a) {
+  alBack = document.activeElement;
+  if (a) { AL.edit = a.id; alDays = a.days.slice(); }
+  else { AL.edit = null; alDays = []; }
+  $('#alSheet').hidden = false; document.documentElement.style.overflow = 'hidden';
+  renderAlarm();
+  const d = a ? null : new Date(Date.now() + 60 * 60e3);
+  requestAnimationFrame(() => { alPickSet(a ? a.h : d.getHours(), a ? a.m : 0); $('#alFH').focus({ preventScroll: true }); });
+}
+function alClose() {
+  alPlayStop(); alEditEnd(); $('#alSheet').hidden = true; document.documentElement.style.overflow = ''; renderAlarm();
+  if (alBack && alBack.isConnected) alBack.focus({ preventScroll: true });
+}
+$('#alNew').onclick = () => { unlockAudio(); alOpen(null); };
+$('#alSheet').addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); alClose(); } });
+const alClick = e => {
   const b = e.target.closest('button'); if (!b) return; const d = b.dataset, A = S.alarm;
   if (d.alsn != null) { A.snooze = +d.alsn; }
   else if (d.alpk) { A.pick = d.alpk; save('alarm'); renderAlarm(); alSegShow($('#alFH')); alSegShow($('#alFM')); return; }
   else if (d.alon) { const a = A.list.find(x => x.id === d.alon); if (!a) return; a.on = !a.on; if (a.on) a.armed = Date.now(); }
   else if (d.aldel) { A.list = A.list.filter(x => x.id !== d.aldel); if (AL.edit === d.aldel) alEditEnd(); }
-  else if (d.aledit) { const a = A.list.find(x => x.id === d.aledit); if (!a) return;
-    AL.edit = a.id; alDays = a.days.slice(); alPickSet(a.h, a.m, true); renderAlarm(); $('#pAlarm').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); $('#alWH').focus({ preventScroll: true }); return; }
-  else if (b.id === 'alCancel') { alEditEnd(); renderAlarm(); return; }
+  else if (d.aledit) { const a = A.list.find(x => x.id === d.aledit); if (a) alOpen(a); return; }
+  else if (b.id === 'alCancel') { alClose(); return; }
+  else if (b.id === 'alDel') { A.list = A.list.filter(x => x.id !== AL.edit); save('alarm'); alClose(); return; }
   else if (b.id === 'alHear') { if (alOut) { alPlayStop(); return; } alPlay('axiom', 7.2); b.classList.add('on'); return; }
   else if (d.alday != null) { const i = +d.alday; alDays = alDays.includes(i) ? alDays.filter(x => x !== i) : [...alDays, i]; renderAlarm(); return; }
   else return;
   unlockAudio(); save('alarm'); renderAlarm();
   const f = d.alon ? `[data-alon="${d.alon}"]` : d.alsn != null ? `[data-alsn="${d.alsn}"]` : null;
   if (f && $(f)) $(f).focus();
-});
+};
+$('#pAlarm').addEventListener('click', alClick); $('#alSheet').addEventListener('click', alClick);
 $('#alForm').addEventListener('submit', e => {
   e.preventDefault(); const v = $('#alTime').value; if (!/^\d\d:\d\d$/.test(v)) return;
   unlockAudio();
   const vals = { h: +v.slice(0, 2), m: +v.slice(3, 5), days: alDays.slice().sort(), on: true, armed: Date.now() };
   const a = AL.edit && S.alarm.list.find(x => x.id === AL.edit);
   if (a) Object.assign(a, vals); else S.alarm.list.push({ id: uid(), ...vals });
-  alEditEnd(); save('alarm'); renderAlarm();
+  save('alarm'); alClose();
 });
 /* the time drums: each number list repeats so you can keep flicking round (23 → 00); after it settles it quietly jumps back to the middle copy */
 const ALW = { H: { n: 24, rep: 9 }, M: { n: 60, rep: 5 } };
