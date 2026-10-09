@@ -121,7 +121,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           test -f test.log || echo "no test log" > test.log
-          grep -E "error:|Test Case|Executed|XCTAssert" test.log | sed "s#$GITHUB_WORKSPACE/##" > test-summary.txt || true
+          grep -E "error:|Test Case|Executed|XCTAssert|Siri " test.log | sed "s#$GITHUB_WORKSPACE/##" > test-summary.txt || true
           (cd previews 2>/dev/null && zip -qr ../widget-previews.zip .) || echo "no pictures" > widget-previews.zip
           gh release delete widget-previews --yes --cleanup-tag || true
           gh release create widget-previews widget-previews.zip test-summary.txt --prerelease --title "Widget previews" --notes "Every widget drawn from real dashboard data, ${GITHUB_SHA::7}."

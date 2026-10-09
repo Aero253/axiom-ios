@@ -6,6 +6,7 @@ The Axiom dashboard as an iPhone app, with Home Screen and Lock Screen widgets. 
 
 - **The dashboard:** the same Axiom file, full screen, working offline, with your data saved on the phone.
 - **Alarm clock:** alarms with a time, a label and repeat days, like the Clock app, in Axiom's dots. On iOS 26 and later they ring even when the phone is locked, on silent or in Focus, and a snoozed alarm counts down on the Lock Screen in dots. Earlier iOS shows them as notifications.
+- **Siri and Shortcuts:** "When's my next report in Axiom?", "Where am I flying tomorrow in Axiom?", "What's my next alarm in Axiom?", "Add a glass of water in Axiom". Also in the Shortcuts app.
 - **19 widgets** (touch and hold the Home Screen, tap **Edit**, **Add Widget**, search "Axiom"):
   - **Roster:** Next duty (small, medium, large departure board; turns yellow, then red, before report), Flight progress (a dot moving along the sector while you fly), Globe (the dot-matrix globe zoomed to your route in red), Next 7 days, Roster month.
   - **Time:** Clock (Bangkok in big dots, with UTC), World clock (your cities, live), Year (days left, every day as a dot).

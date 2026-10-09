@@ -6,10 +6,11 @@ struct AddGlassIntent: AppIntent {
     static var title: LocalizedStringResource = "Add a glass of water"
     static var description = IntentDescription("Adds one 250 ml glass to today's water in Axiom.")
 
-    func perform() async throws -> some IntentResult {
+    func perform() async throws -> some IntentResult & ProvidesDialog {
         Shared.addGlass()
         await Reminders.sync(Shared.load(), ask: false)   // a glass on the widget moves the water reminders too
-        return .result()
+        WidgetCenter.shared.reloadAllTimelines()
+        return .result(dialog: IntentDialog(stringLiteral: Speak.water(Shared.waterToday(Shared.load()))))   // what Siri says back
     }
 }
 

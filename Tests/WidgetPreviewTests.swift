@@ -76,6 +76,25 @@ final class WidgetPreviewTests: XCTestCase {
         XCTAssertEqual(items.count, payload.todos?.count)
     }
 
+    func testSiriAnswers() throws {
+        let next = Speak.nextReport(payload, now: now)
+        print("Siri next report:", next)
+        XCTAssertFalse(next.isEmpty)
+        let tmr = Speak.tomorrow(payload, now: now)
+        print("Siri tomorrow:", tmr)
+        XCTAssertTrue(tmr.hasPrefix("Tomorrow") || tmr.hasPrefix("Your roster") || tmr.hasPrefix("Nothing"), tmr)
+        print("Siri next alarm:", Speak.nextAlarm(payload, now: now))
+        XCTAssertEqual(Speak.place("CNX", in: nil), "Chiang Mai")
+        XCTAssertEqual(Speak.place("ZZZ", in: nil), "Z Z Z")
+        XCTAssertEqual(Speak.span(9 * 3600 + 20 * 60), "9 hours 20 minutes")
+        XCTAssertEqual(Speak.water(Water(date: "", n: 3, goal: 8, ts: 0)), "Added. 3 of 8 glasses today, 5 to go.")
+        // the example roster in the test data is marked demo, so read it as if it were imported
+        var real = payload!; real.demo = false
+        let spoken = Speak.nextReport(real, now: now)
+        print("Siri next report (imported):", spoken)
+        XCTAssertTrue(spoken.contains("That's in"), spoken)
+    }
+
     func testWaterReminders() throws {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = TimeZone(identifier: "Asia/Bangkok")!
