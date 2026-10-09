@@ -478,6 +478,13 @@ body.editing .wi > .p{outline:1.5px dashed var(--faint); outline-offset:-1.5px}
 .calnav{display:flex; align-items:center; gap:6px}
 .calnav .m{font:700 19px/1 var(--f-led); letter-spacing:.06em; min-width:9.5ch; text-align:center}
 .tools{display:flex; gap:6px; flex-wrap:wrap}
+/* roster menu: one button, the three choices underneath */
+.rmenu{position:fixed; z-index:120; min-width:220px; display:grid; gap:2px; padding:6px; background:var(--panel, var(--bg)); color:var(--ink); border:1px solid var(--line); border-radius:12px; box-shadow:0 14px 34px rgba(0,0,0,.4)}
+.rmenu[hidden]{display:none}
+.ri{appearance:none; border:0; background:transparent; color:var(--ink); display:flex; align-items:center; gap:12px; padding:12px; border-radius:8px; font:500 14px/1.2 var(--f-mono); text-align:left; cursor:pointer; white-space:nowrap}
+.ri:hover, .ri:focus-visible{background:var(--raise); outline:0}
+.ri [data-ic]{line-height:0}
+.ri.arm{background:var(--ink); color:var(--bg)}
 .banner{font:500 12px/1.4 var(--f-mono); padding:9px 11px; border-radius:6px; background:var(--accent-soft); border:1px dashed var(--faint); display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap}
 .msg{font:500 12px/1.4 var(--f-mono); padding:8px 11px; border-radius:6px; border:1px solid var(--line); background:var(--raise)}
 .msg[data-k="err"]{border:1.5px dashed var(--ink); font-weight:600}
@@ -734,9 +741,12 @@ body.calm *, body.calm *::before, body.calm *::after{animation:none!important; t
           <button class="btn ghost ico" id="todayB" data-ic="target" aria-label="Go to today" title="Go to today"></button>
         </div>
         <div class="tools">
-          <button class="btn pri ico" id="pdfB" data-ic="fileIn" aria-label="Import eCrew PDF" title="Import eCrew PDF"></button>
-          <button class="btn ico" id="pasteB" data-ic="paste" aria-label="Paste roster text" title="Paste roster text"></button>
-          <button class="btn ghost ico" id="clearR" data-ic="trash" aria-label="Clear roster" title="Clear roster"></button>
+          <button class="btn pri ico" id="rosterB" data-ic="fileIn" aria-label="Roster: import or clear" title="Roster" aria-haspopup="menu" aria-expanded="false" aria-controls="rMenu"></button>
+          <div class="rmenu" id="rMenu" role="menu" aria-label="Roster" hidden>
+            <button class="ri" id="pdfB" role="menuitem"><span data-ic="fileIn"></span><span>Import eCrew PDF</span></button>
+            <button class="ri" id="pasteB" role="menuitem"><span data-ic="paste"></span><span>Paste roster text</span></button>
+            <button class="ri" id="clearR" role="menuitem"><span data-ic="trash"></span><span class="rt">Clear roster</span></button>
+          </div>
         </div>
       </div>
       <div id="calMsg"></div>
@@ -2037,20 +2047,39 @@ function applyImport(res) {
 }
 
 /* ---------- events ---------- */
-$('#pdfB').onclick = () => $('#pdfIn').click();
+const rMenu = $('#rMenu'), rosterB = $('#rosterB');
+document.body.appendChild(rMenu);   // out of the widget, so nothing in the board can clip or shift it
+function rMenuOpen(open) {
+  rMenu.hidden = !open; rosterB.setAttribute('aria-expanded', open);
+  if (!open) { clearArm = 0; $('#clearR').classList.remove('arm'); $('#clearR .rt').textContent = 'Clear roster'; return; }
+  const b = rosterB.getBoundingClientRect(), w = Math.max(220, rMenu.offsetWidth);
+  rMenu.style.top = Math.min(innerHeight - rMenu.offsetHeight - 8, b.bottom + 6) + 'px';
+  rMenu.style.left = Math.max(8, Math.min(innerWidth - w - 8, b.right - w)) + 'px';
+  rMenu.querySelector('.ri').focus();
+}
+rosterB.onclick = e => { e.stopPropagation(); rMenuOpen(rMenu.hidden); };
+document.addEventListener('click', e => { if (!rMenu.hidden && !rMenu.contains(e.target)) rMenuOpen(false); });
+addEventListener('scroll', () => { if (!rMenu.hidden) rMenuOpen(false); }, { passive: true });
+rMenu.addEventListener('keydown', e => {
+  const items = [...rMenu.querySelectorAll('.ri')], i = items.indexOf(document.activeElement);
+  if (e.key === 'Escape') { rMenuOpen(false); rosterB.focus(); }
+  else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); items[(i + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length].focus(); }
+});
+$('#pdfB').onclick = () => { rMenuOpen(false); $('#pdfIn').click(); };
 $('#pdfIn').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) importPdf(f); };
 const sheet = $('#sheet');
-$('#pasteB').onclick = () => { sheet.hidden = false; $('#pasteIn').focus(); };
-const closeSheet = () => { sheet.hidden = true; $('#pasteB').focus(); };
+$('#pasteB').onclick = () => { rMenuOpen(false); sheet.hidden = false; $('#pasteIn').focus(); };
+const closeSheet = () => { sheet.hidden = true; rosterB.focus(); };
 $('#sheetX').onclick = closeSheet; $('#sheetC').onclick = closeSheet;
 sheet.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
 $('#sheetGo').onclick = () => { const t = $('#pasteIn').value; if (!t.trim()) return; applyImport(ECREW.fromText(t)); $('#pasteIn').value = ''; closeSheet(); };
 let clearArm = 0;
-$('#clearR').onclick = () => {
-  if (demo()) return msg('info', 'There’s no imported roster to clear.');
-  const cb = $('#clearR'), disarm = () => { cb.classList.remove('arm'); setIc(cb, 'trash', 'Clear roster'); };
-  if (Date.now() - clearArm > 4000) { clearArm = Date.now(); cb.classList.add('arm'); setIc(cb, 'alert', 'Tap again to clear the roster'); setTimeout(disarm, 4000); return; }
-  disarm();
+$('#clearR').onclick = e => {
+  e.stopPropagation();
+  if (demo()) { rMenuOpen(false); return msg('info', 'There’s no imported roster to clear.'); }
+  const cb = $('#clearR');
+  if (Date.now() - clearArm > 4000) { clearArm = Date.now(); cb.classList.add('arm'); $('#clearR .rt').textContent = 'Tap again to clear'; return; }   // a second tap, so it can't happen by accident
+  rMenuOpen(false);
   S.roster.duties = []; S.roster.importedAt = ''; save('roster'); msg('ok', 'Roster cleared.'); rosterChanged();
 };
 const wave = () => { const c = $('#cal'); c.classList.remove('wave'); void c.offsetWidth; c.classList.add('wave'); clearTimeout(wave.t); wave.t = setTimeout(() => c.classList.remove('wave'), 900); };
