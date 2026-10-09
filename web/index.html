@@ -2276,7 +2276,9 @@ function renderAlarm() {
   if (!$('#pAlarm')) return;
   alTidy();
   const A = S.alarm, now = Date.now(), [st, note] = alStatus();
-  $('#alSt').textContent = st; $('#alNote').textContent = note;
+  // only speak up when something stops the alarms ringing (switched off in Settings)
+  const bad = AL.st && AL.st.auth === 'denied';
+  $('#alSt').textContent = ''; $('#alSt').hidden = true; $('#alNote').textContent = bad ? note : ''; $('#alNote').hidden = !bad;
   $('#alPk').innerHTML = [['flip', 'Clock'], ['roll', 'Roll']].map(([k, l]) => `<button type="button" class="tab" data-alpk="${k}" aria-pressed="${(A.pick || 'flip') === k}">${l}</button>`).join('');
   $('#alPick').classList.toggle('flipm', (A.pick || 'flip') === 'flip');
   $('#alSn').innerHTML = [5, 9, 15].map(v => `<button type="button" class="tab" data-alsn="${v}" aria-pressed="${A.snooze === v}">${v}</button>`).join('');
