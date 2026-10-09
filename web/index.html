@@ -286,7 +286,7 @@ input.inp[type=time]::-webkit-datetime-edit, input.inp[type=date]::-webkit-datet
 .alf .grp .lbl{margin-right:2px}
 .aldays{display:flex; gap:4px; flex-wrap:wrap}
 .aldays .tab{min-width:calc(var(--tap) * .8 / var(--z)); padding:5px 0}
-#alRing{position:fixed; inset:0; z-index:200; display:grid; place-items:center; background:#000; color:#fff; padding:40px 0; text-align:center; overflow:hidden;
+#alRing{position:fixed; inset:0; z-index:200; display:grid; place-items:center; background:#000; color:#fff; padding:40px 0 190px; text-align:center; overflow:hidden;
   --ink:currentColor; --dim:currentColor; --line:currentColor}
 #alRing[hidden]{display:none}
 #alRing > div{width:100%; min-width:0}
@@ -302,12 +302,12 @@ input.inp[type=time]::-webkit-datetime-edit, input.inp[type=date]::-webkit-datet
 #alRing .w{font:700 18px/1.3 var(--f-mono); margin-top:22px; letter-spacing:.08em; text-transform:uppercase; padding:0 24px}
 #alRing .s{font:500 13px/1.3 var(--f-mono); opacity:.7; margin-top:6px; min-height:1em}
 /* big buttons in the dot letters: Stop on top, easy to hit half asleep */
-#alRing .b{display:grid; gap:14px; width:min(86vw, 380px); margin:38px auto 0}
-#alRing .b button{appearance:none; font:700 36px/1 var(--f-led); letter-spacing:.04em; text-transform:uppercase; padding:24px 20px; border-radius:999px; cursor:pointer; width:100%; -webkit-tap-highlight-color:transparent}
+#alRing .b{display:grid; gap:12px; width:min(84vw, 360px); position:absolute; left:50%; transform:translateX(-50%); bottom:calc(env(safe-area-inset-bottom, 0px) + 44px)}
+#alRing .b button{appearance:none; font:700 26px/1 var(--f-led); letter-spacing:.04em; text-transform:uppercase; padding:18px 20px; border-radius:999px; cursor:pointer; width:100%; -webkit-tap-highlight-color:transparent}
 #alRing .b button:active{transform:scale(.97)}
 #alRing #alRSn{background:transparent; color:inherit; border:3px solid currentColor}
 #alRing .b button:focus{outline:none} #alRing .b button:focus-visible{outline:2px dashed currentColor; outline-offset:4px}
-#alRing #alRStop{background:#ffc400; color:#111; border:3px solid #ffc400; order:-1; font-size:54px; padding:30px 20px}
+#alRing #alRStop{background:#ffc400; color:#111; border:3px solid #ffc400; order:-1; font-size:34px; padding:22px 20px}
 @keyframes alTape{to{background-position:39.6px 0}}
 @keyframes alFlash{0%{background:#ffc400; color:#111} 50%{background:#000; color:#ffc400}}
 @keyframes alFlashB{0%{background:#111; color:#ffc400; border-color:#111} 50%{background:#ffc400; color:#111; border-color:#ffc400}}
