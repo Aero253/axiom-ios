@@ -130,7 +130,7 @@ struct WeatherView: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 if c.code == "HERE" {
-                    Image(systemName: "location.fill").font(.system(size: 8, weight: .bold)).foregroundStyle(.secondary)
+                    Image(systemName: "mappin.and.ellipse").font(.system(size: 9, weight: .bold)).foregroundStyle(.secondary)
                     Caption(text: c.name)
                 } else {
                     Caption(text: "\(c.code) · \(c.name)")
@@ -177,8 +177,13 @@ struct WeatherView: View {
                 HStack(spacing: 10) {
                     WxDots(cond: c.current?.cond ?? today(c)?.cond ?? "cloud", size: 26)
                     VStack(alignment: .leading, spacing: 0) {
-                        Text(c.code == "HERE" ? "Here" : c.code).font(Ax.mono(13, .bold))
-                        Text(c.name).font(Ax.mono(10)).foregroundStyle(.secondary).lineLimit(1)
+                        if c.code == "HERE" {   // where you are: the town's name, with a pin
+                            Text(c.name).font(Ax.mono(13, .bold)).lineLimit(1).minimumScaleFactor(0.7)
+                            Label("Your location", systemImage: "mappin.and.ellipse").font(Ax.mono(10)).foregroundStyle(.secondary).labelStyle(.titleAndIcon)
+                        } else {
+                            Text(c.code).font(Ax.mono(13, .bold))
+                            Text(c.name).font(Ax.mono(10)).foregroundStyle(.secondary).lineLimit(1)
+                        }
                     }
                     Spacer(minLength: 0)
                     if let d = today(c) {

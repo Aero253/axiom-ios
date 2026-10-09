@@ -999,6 +999,7 @@ const ICO = {
   gauge: '<path d="M4 16a8 8 0 1 1 16 0"/><path d="M12 16l4-5"/>',
   flag: '<path d="M5 21V4"/><path d="M5 4.5h11.5l-2.5 4 2.5 4H5"/>',
   bell: '<path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>',
+  loc: '<path d="M12 21s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/>',
   bellOff: '<path d="M6 16.5V11a6 6 0 0 1 9.6-4.8M18 11v5.5l1.5 2H8"/><path d="M10 20.5a2 2 0 0 0 4 0M4 4l16 16"/>',
   alarm: '<circle cx="12" cy="13" r="7.5"/><path d="M12 9v4l2.5 2M4 6.5 7 4M20 6.5 17 4"/>'
 };
@@ -1505,6 +1506,7 @@ function renderPlaces(k) {
   const keep = el.querySelector('input:focus'), kv = keep && keep.value, kq = keep && (keep.closest('[data-peform]') ? 'f' : 'a');
   let h = '<ul class="wclk ped">' + (codes.map(c => st.row === c
     ? `<li class="ed"><form data-peform="${c}"><input class="inp" data-ap value="${c}" autocomplete="off" autocorrect="off" spellcheck="false" aria-label="New airport code or city for ${c}"><button class="btn pri ico" aria-label="Save" title="Save">${ic('check')}</button><button type="button" class="btn ghost ico" data-pcancel aria-label="Cancel" title="Cancel">${ic('x')}</button></form></li>`
+    : c === 'HERE' ? `<li><span class="c">${ic('loc')}<small>${esc(apName(c))} · your location</small></span><span class="acts"><button class="x" data-pdel="${c}" aria-label="Hide your location" title="Hide">${ic('hide')}</button></span></li>`
     : `<li><span class="c">${c}<small>${esc(apName(c))}${auto.includes(c) && !p.add.includes(c) ? ' · ' + (c === base() ? 'base' : 'roster') : ''}</small></span><span class="acts"><button class="x" data-ped-row="${c}" aria-label="Change ${c}" title="Change">${ic('pen')}</button><button class="x" data-pdel="${c}" aria-label="Remove ${c}" title="Remove">${ic('trash')}</button></span></li>`).join('')
     || '<li class="hid"><span>No cities yet.</span></li>');
   if (p.hide.length) h += `<li class="hid"><span>${p.hide.length} hidden: ${p.hide.join(', ')}</span><button class="btn ghost ico" data-pshow aria-label="Show hidden cities again" title="Show hidden again">${ic('reset')}</button></li>`;
@@ -1590,7 +1592,9 @@ const kindOf = (p, cond) => cond || (p >= 60 ? 'rain' : p >= 35 ? 'cloud' : p >=
 function renderWx() {
   const list = wxCodes();
   if (!list.includes(V.wx)) V.wx = list[0];
-  $('#wxTabs').innerHTML = list.map(c => `<button class="tab" data-wx="${esc(c)}" aria-pressed="${c === V.wx}">${esc(c)}</button>`).join('');
+  $('#wxTabs').innerHTML = list.map(c => c === 'HERE'   // where you are: a pin, not a code
+    ? `<button class="tab ico" data-wx="HERE" aria-pressed="${c === V.wx}" aria-label="Your location: ${esc(apName(c))}" title="${esc(apName(c))}">${ic('loc')}</button>`
+    : `<button class="tab" data-wx="${esc(c)}" aria-pressed="${c === V.wx}">${esc(c)}</button>`).join('');
   if (!list.length) { $('#wxBody').innerHTML = '<div class="empty">No cities. Tap the pencil to add one.</div>'; return; }
   const c = WX && WX.cities && WX.cities.find(x => x.code === V.wx);
   if (!c) { $('#wxBody').innerHTML = `<div class="empty">No forecast for ${V.wx === 'HERE' ? esc(apName(V.wx)) : esc(V.wx) + ' ' + esc(apName(V.wx))} yet. ${navigator.onLine ? 'Loading…' : 'It loads next time you’re online.'}</div>`; return; }
