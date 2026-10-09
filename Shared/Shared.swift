@@ -176,6 +176,7 @@ struct Payload: Codable {
     var counts: [CountItem]?
     var lays: [Layover]?
     var alarms: AlarmSet?     // added in 1.2: what the alarm clock should ring
+    var notify: NotifyPlan?   // added in 1.2: duty and water reminders
 }
 
 // MARK: - Alarm clock

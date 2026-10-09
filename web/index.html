@@ -290,6 +290,10 @@ input.inp[type=time]::-webkit-datetime-edit, input.inp[type=date]::-webkit-datet
 #alSheet .aldays .tab{flex:1; min-height:48px; font-size:14px}
 #alSheet .aldel{margin-top:auto; align-self:center; text-transform:none}
 #pAlarm .ph .hr{display:flex; align-items:center; gap:10px}
+#pWake .ph .hr{display:flex; align-items:center; gap:8px}
+.nbell{display:none !important}
+.in-app .nbell{display:inline-grid !important}
+.nbell[aria-pressed="false"]{color:var(--faint)}
 .al .ed .tm{font-size:28px}
 /* clock style: the same big dot digits as the dashboard clock; swipe a number up or down and the dots that change pop in */
 .alpick .alclk{display:none}
@@ -849,7 +853,7 @@ body.calm *, body.calm *::before, body.calm *::after{animation:none!important; t
     </section></div>
 
     <div class="w" data-w="wake"><section class="p" id="pWake" aria-label="Wake-up planner">
-      <div class="ph"><h2>Wake-up</h2><span class="lbl" id="wkFor"></span></div>
+      <div class="ph"><h2>Wake-up</h2><div class="hr"><span class="lbl" id="wkFor"></span><button class="btn ghost ico nbell" id="nDuty" data-nk="duty" data-ic="bell" aria-pressed="true" aria-label="Duty reminders" title="Duty reminders"></button></div></div>
       <div id="wkOut"></div>
       <div class="flds">
         <label class="fld"><span class="lbl">Travel min</span><input class="inp" id="wkTravel" inputmode="numeric" autocomplete="off"></label>
@@ -919,7 +923,7 @@ body.calm *, body.calm *::before, body.calm *::after{animation:none!important; t
     </section></div>
 
     <div class="w" data-w="water"><section class="p" id="pWater" aria-label="Water">
-      <div class="ph"><h2>Water</h2><div class="hr"><span class="lbl" id="waSub"></span><button class="btn ghost ico" id="waGoalB" data-ic="flag" aria-label="Set daily goal" title="Set daily goal" aria-expanded="false"></button></div></div>
+      <div class="ph"><h2>Water</h2><div class="hr"><span class="lbl" id="waSub"></span><button class="btn ghost ico nbell" id="nWater" data-nk="water" data-ic="bell" aria-pressed="true" aria-label="Water reminders" title="Water reminders"></button><button class="btn ghost ico" id="waGoalB" data-ic="flag" aria-label="Set daily goal" title="Set daily goal" aria-expanded="false"></button></div></div>
       <div class="wa-mid"><button class="wa-ring" id="waPlus" aria-label="Add one glass, 250 ml" title="Add one glass, 250 ml"><span class="bign" id="waN">0</span><span class="wa-pl" data-ic="plus" aria-hidden="true"></span></button><span class="lbl" id="waCap"></span></div>
       <div class="water" id="waDots" aria-hidden="true"></div>
       <div class="lbl wa-hint">Tap the circle · 1 glass = 250 ml</div>
@@ -985,6 +989,7 @@ const ICO = {
   gauge: '<path d="M4 16a8 8 0 1 1 16 0"/><path d="M12 16l4-5"/>',
   flag: '<path d="M5 21V4"/><path d="M5 4.5h11.5l-2.5 4 2.5 4H5"/>',
   bell: '<path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/>',
+  bellOff: '<path d="M6 16.5V11a6 6 0 0 1 9.6-4.8M18 11v5.5l1.5 2H8"/><path d="M10 20.5a2 2 0 0 0 4 0M4 4l16 16"/>',
   alarm: '<circle cx="12" cy="13" r="7.5"/><path d="M12 9v4l2.5 2M4 6.5 7 4M20 6.5 17 4"/>'
 };
 const ic = n => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${ICO[n] || ICO.plus}</svg>`;
@@ -1261,7 +1266,7 @@ const BAG_DEFAULT = ['Passport', 'Crew ID card', 'Cabin crew licence', 'Name bad
 const S = { roster: { duties: [], name: '', base: 'DMK', importedAt: '' }, events: [], todos: [], shopping: [], notes: '', world: ['NRT', 'SIN'], whide: [], layout: [],
   count: [], bag: BAG_DEFAULT.map((t, i) => ({ id: 'b' + i, text: t, done: false })), fx: FX_DEFAULT.slice(),
   links: [{ id: 'swap', label: 'SL Swap Check', url: 'https://aero253.github.io/SL-Roster-swap-checker/' }],
-  docs: [], exp: [], lay: {}, wake: { travel: 60, ready: 45, sleep: 8 }, alarm: { snooze: 9, pick: 'flip', list: [] }, water: { date: '', n: 0, goal: 8 }, places: { sun: { add: [], hide: [] }, wx: { add: [], hide: [] } }, pa: { tpl: '' } };
+  docs: [], exp: [], lay: {}, wake: { travel: 60, ready: 45, sleep: 8 }, alarm: { snooze: 9, pick: 'flip', list: [] }, notify: { duty: true, water: true }, water: { date: '', n: 0, goal: 8 }, places: { sun: { add: [], hide: [] }, wx: { add: [], hide: [] } }, pa: { tpl: '' } };
 const V = { month: todayISO().slice(0, 7), sel: todayISO(), wx: 'DMK', msg: null };
 
 /* Example month shown only until a roster is imported. Never saved. */
@@ -1293,8 +1298,8 @@ function span(d) { // [startMs, endMs] for timed duties
 }
 
 /* ---------- storage: this device (localStorage) ---------- */
-const DOCS = ['roster', 'events', 'todos', 'shopping', 'notes', 'world', 'whide', 'layout', 'count', 'bag', 'fx', 'links', 'docs', 'exp', 'lay', 'wake', 'alarm', 'water', 'pa', 'places'];
-const OBJ_DOCS = ['lay', 'wake', 'alarm', 'water', 'pa', 'places'];
+const DOCS = ['roster', 'events', 'todos', 'shopping', 'notes', 'world', 'whide', 'layout', 'count', 'bag', 'fx', 'links', 'docs', 'exp', 'lay', 'wake', 'alarm', 'notify', 'water', 'pa', 'places'];
+const OBJ_DOCS = ['lay', 'wake', 'alarm', 'notify', 'water', 'pa', 'places'];
 let canStore = true;
 const lsGet = k => { try { const v = localStorage.getItem('dotboard.' + k); return v ? JSON.parse(v) : null; } catch { return null; } };
 const lsSet = (k, v) => { try { localStorage.setItem('dotboard.' + k, JSON.stringify(v)); return true; } catch { return false; } };
@@ -2515,6 +2520,32 @@ setInterval(() => {
   if (x) alRing(x);
 }, 5000);
 
+/* ---------- notifications (iPhone app) ----------
+   Duty reminders for every duty in the next 14 days, from the Wake-up planner: bedtime, time to leave, report in 30 minutes.
+   Water reminders are worked out by the app itself, so a glass added on the widget moves them too. */
+function remindersForNative() {
+  const N = S.notify || {}, w = S.wake, now = Date.now(), list = [];
+  if (N.duty !== false && !demo()) duties().filter(d => !FREE.includes(d.type) && span(d)).map(d => ({ d, s: span(d) }))
+    .filter(x => x.s[0] > now && x.s[0] < now + 14 * 864e5).sort((a, b) => a.s[0] - b.s[0]).forEach(({ d, s }) => {
+      const rep = s[0], leave = rep - w.travel * 60000, wake = leave - w.ready * 60000, bed = wake - w.sleep * 3600e3;
+      const flt = d.legs && d.legs[0] && d.legs[0].flt, hm = ms => { const b = new Date(ms + H7); return `${pad(b.getUTCHours())}:${pad(b.getUTCMinutes())}`; };
+      const what = d.type === 'FDP' ? `Report ${hm(rep)}${flt ? ' · ' + flt : ''}` : `${d.label || TYPES[d.type] || d.type} ${hm(rep)}`;
+      list.push({ key: 'b' + rep, at: bed, title: 'Bedtime', body: `${what}. Sleep now to get ${hm0(w.sleep)} before your ${hm(wake)} wake-up.` });
+      if (d.type !== 'HSBY') list.push({ key: 'l' + rep, at: leave, title: 'Time to leave', body: `${what}. Leave now to be there on time.` });   // home standby: you stay home
+      list.push({ key: 'r' + rep, at: rep - 30 * 60000, title: d.type === 'FDP' ? 'Report in 30 minutes' : `${d.label || TYPES[d.type] || d.type} in 30 minutes`, body: what });
+    });
+  return { duty: list.filter(x => x.at > now).slice(0, 24), water: N.water !== false };
+}
+const hm0 = h => { const m = Math.round(h * 60); return `${Math.floor(m / 60)} h${m % 60 ? ' ' + (m % 60) + ' min' : ''}`; };
+function renderBells() {
+  const N = S.notify || {};
+  [['#nDuty', 'duty', 'Duty reminders'], ['#nWater', 'water', 'Water reminders']].forEach(([id, k, l]) => { const b = $(id); if (!b) return;
+    const on = N[k] !== false; b.setAttribute('aria-pressed', on); setIc(b, on ? 'bell' : 'bellOff', `${l}: ${on ? 'on' : 'off'}`); });
+}
+document.addEventListener('click', e => { const b = e.target.closest('.nbell'); if (!b) return;
+  S.notify = { duty: true, water: true, ...(S.notify || {}) }; S.notify[b.dataset.nk] = S.notify[b.dataset.nk] === false; save('notify'); renderBells(); });
+renderBells();
+
 /* ---------- layovers (night-stops on the roster) ---------- */
 function layovers() {
   const t = todayISO(), end = addDays(t, 14), out = [];
@@ -3163,7 +3194,7 @@ function widgetPayload() {
     world: [...(S.whide.includes('UTC') ? [] : [{ code: 'UTC', name: 'Zulu', tz: 'UTC', roster: false }]),
       ...worldRows().map(r => ({ code: r.c, name: AP[r.c] ? AP[r.c][2] : r.c, tz: TZ[r.c], roster: !!r.auto }))].slice(0, 10),
     sun: placeCodes('sun').map(c => ({ code: c, name: AP[c] ? AP[c][2] : c, tz: TZ[c] || 'Asia/Bangkok', days: sunDays(c) })),
-    wx, todos: items('todos'), shopping: items('shopping'), counts, lays, alarms: alarmsForNative() };
+    wx, todos: items('todos'), shopping: items('shopping'), counts, lays, alarms: alarmsForNative(), notify: remindersForNative() };
 }
 var nativeT = 0;
 function pushNative() { const h = nativeH(); if (!h) return; clearTimeout(nativeT); nativeT = setTimeout(() => { try { h.postMessage(JSON.stringify(widgetPayload())); } catch (e) {} }, 300); }

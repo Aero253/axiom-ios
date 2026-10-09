@@ -8,6 +8,7 @@ struct AddGlassIntent: AppIntent {
 
     func perform() async throws -> some IntentResult {
         Shared.addGlass()
+        await Reminders.sync(Shared.load(), ask: false)   // a glass on the widget moves the water reminders too
         return .result()
     }
 }

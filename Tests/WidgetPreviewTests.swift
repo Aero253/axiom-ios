@@ -41,6 +41,7 @@ final class WidgetPreviewTests: XCTestCase {
         XCTAssertFalse(payload.counts?.isEmpty ?? true, "countdowns")
         XCTAssertNotNil(payload.status(at: now), "a next duty")
         XCTAssertFalse(payload.alarms?.list.isEmpty ?? true, "alarms")
+        XCTAssertEqual(payload.notify?.water, true, "reminders")
         XCTAssertNotNil(UIFont(name: "AxiomDots-Regular", size: 20), "the dot font for the snooze countdown")
         XCTAssertTrue(payload.duties.contains { !($0.coords ?? []).isEmpty }, "route coordinates for the globe")
         XCTAssertTrue(payload.duties.contains { ($0.legs ?? []).contains { $0.depMs != nil } }, "leg times for flight progress")
@@ -73,6 +74,18 @@ final class WidgetPreviewTests: XCTestCase {
     func testListTicksLayOverTheList() {
         let items = Shared.items("todos", in: payload)
         XCTAssertEqual(items.count, payload.todos?.count)
+    }
+
+    func testWaterReminders() throws {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "Asia/Bangkok")!
+        let at1300 = try XCTUnwrap(cal.date(from: DateComponents(year: 2026, month: 10, day: 8, hour: 13)))
+        XCTAssertEqual(Reminders.expected(goal: 8, hour: 22), 8)
+        let behind = Reminders.waterTimes(now: at1300, water: Water(date: "2026-10-08", n: 1, goal: 8, ts: 0), calendar: cal)
+        XCTAssertEqual(behind.first.map { cal.component(.hour, from: $0.at) }, 14, "next nudge at 14:00 when behind")
+        let ahead = Reminders.waterTimes(now: at1300, water: Water(date: "2026-10-08", n: 8, goal: 8, ts: 0), calendar: cal)
+        XCTAssertTrue(ahead.allSatisfy { cal.component(.day, from: $0.at) == 9 }, "goal reached: nothing more today, only tomorrow's")
+        XCTAssertEqual(ahead.count, Reminders.waterHours.count)
     }
 
     func testAlarmTimes() throws {
