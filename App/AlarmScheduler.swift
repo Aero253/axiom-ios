@@ -4,6 +4,7 @@ import UserNotifications
 import CryptoKit
 #if canImport(AlarmKit)
 import AlarmKit
+import ActivityKit
 #endif
 
 /// What the dashboard is told about its alarms.
@@ -102,7 +103,7 @@ final class AlarmScheduler {
         let at: String = item.at.map { String(Int64($0)) } ?? ""
         let h: String = item.h.map { String($0) } ?? ""
         let m: String = item.m.map { String($0) } ?? ""
-        let parts: [String] = [item.key, at, h, m, days, item.title, item.sub ?? "", String(snooze)]
+        let parts: [String] = [item.key, at, h, m, days, item.title, item.sub ?? "", String(snooze), item.snd ?? ""]
         let sig = parts.joined(separator: "|")
         var b = Array(SHA256.hash(data: Data(sig.utf8)).prefix(16))
         b[6] = (b[6] & 0x0F) | 0x50     // a name-based UUID
@@ -177,7 +178,7 @@ final class AlarmScheduler {
             countdownDuration: Alarm.CountdownDuration(preAlert: nil, postAlert: TimeInterval(max(1, snooze) * 60)),
             schedule: schedule,
             attributes: attributes,
-            sound: .default)
+            sound: item.soundFile.map { .named($0) } ?? .default)
     }
     #endif
 
@@ -205,7 +206,7 @@ final class AlarmScheduler {
             let content = UNMutableNotificationContent()
             content.title = "⏰ " + item.title
             content.body = item.sub?.isEmpty == false ? item.sub! : "Alarm"
-            content.sound = .default
+            content.sound = item.soundFile.map { UNNotificationSound(named: UNNotificationSoundName($0)) } ?? .default
             content.interruptionLevel = .timeSensitive
             let base = Self.id(for: item, snooze: set.snooze).uuidString
             if let at = item.at {
