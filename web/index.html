@@ -285,6 +285,9 @@ input.inp[type=time]::-webkit-datetime-edit, input.inp[type=date]::-webkit-datet
 .alf .grp{display:flex; gap:4px; align-items:center; flex-wrap:wrap}
 .alf .grp .lbl{margin-right:2px}
 .aldays{display:flex; gap:4px; flex-wrap:wrap}
+.alplay{display:inline-flex; align-items:center; gap:6px; text-transform:none; letter-spacing:.02em}
+.alplay [data-ic]{display:inline-grid; line-height:0}
+.alplay.on{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
 .aldays .tab{min-width:calc(var(--tap) * .8 / var(--z)); padding:5px 0}
 #alRing{position:fixed; inset:0; z-index:200; display:grid; place-items:center; background:#000; color:#fff; padding:40px 0 190px; text-align:center; overflow:hidden;
   --ink:currentColor; --dim:currentColor; --line:currentColor}
@@ -832,9 +835,8 @@ body.calm *, body.calm *::before, body.calm *::after{animation:none!important; t
       <form class="alf" id="alForm">
         <div class="alpick" id="alPick" role="group" aria-label="Alarm time"><div class="wheel" id="alWH" tabindex="0" role="spinbutton" aria-label="Hour" aria-valuemin="0" aria-valuemax="23"></div><span class="co wc" aria-hidden="true">:</span><div class="wheel" id="alWM" tabindex="0" role="spinbutton" aria-label="Minute" aria-valuemin="0" aria-valuemax="59"></div><div class="alclk big" id="alClk"><button type="button" class="ar" data-seg="alFH" data-d="1" aria-label="Hour up" tabindex="-1" data-ic="up"></button><span></span><button type="button" class="ar" data-seg="alFM" data-d="1" aria-label="Minute up" tabindex="-1" data-ic="up"></button><span class="seg" id="alFH" tabindex="0" role="spinbutton" aria-label="Hour" aria-valuemin="0" aria-valuemax="23">00</span><span aria-hidden="true">:</span><span class="seg" id="alFM" tabindex="0" role="spinbutton" aria-label="Minute" aria-valuemin="0" aria-valuemax="59">00</span><button type="button" class="ar" data-seg="alFH" data-d="-1" aria-label="Hour down" tabindex="-1" data-ic="down"></button><span></span><button type="button" class="ar" data-seg="alFM" data-d="-1" aria-label="Minute down" tabindex="-1" data-ic="down"></button></div></div>
         <input type="hidden" id="alTime" value="07:00">
-        <div class="r"><input class="inp" id="alLabel" placeholder="Label" maxlength="40" autocomplete="off" aria-label="Label"><button class="btn pri ico" id="alAdd" data-ic="plus" aria-label="Add alarm" title="Add alarm"></button></div>
-        <div class="r2"><div class="aldays" id="alDays" role="group" aria-label="Repeat on"></div><button type="button" class="btn ghost ico" id="alCancel" data-ic="x" aria-label="Cancel editing" title="Cancel editing" hidden></button></div>
-        <div class="r2"><div class="grp" role="group" aria-label="Alarm sound"><span class="lbl">Sound</span><span id="alSnd"></span></div></div>
+        <div class="r2"><div class="aldays" id="alDays" role="group" aria-label="Repeat on"></div><div class="grp"><button type="button" class="btn ghost ico" id="alCancel" data-ic="x" aria-label="Cancel editing" title="Cancel editing" hidden></button><button class="btn pri ico" id="alAdd" data-ic="plus" aria-label="Add alarm" title="Add alarm"></button></div></div>
+        <div class="r2"><div class="grp"><span class="lbl">Sound</span><button type="button" class="btn ghost alplay" id="alHear" aria-label="Play the Axiom chime"><span data-ic="play"></span>Axiom chime</button></div></div>
         <div class="r2"><div class="grp" role="group" aria-label="Snooze length"><span class="lbl">Snooze min</span><span id="alSn"></span></div><div class="grp" role="group" aria-label="Time picker style"><span class="lbl">Picker</span><span id="alPk"></span></div></div>
       </form>
       <div class="note" id="alNote"></div>
@@ -2206,12 +2208,14 @@ function renderWake() {
 $('#wkMan').addEventListener('input', renderWake);
 
 /* ---------- alarm clock ----------
-   A plain alarm clock: a time, a label and the days it repeats, on this phone's clock.
+   A plain alarm clock: a time and the days it repeats, on this phone's clock. Every alarm rings with Axiom's own chime.
    In the iPhone app the alarms are handed to iOS, which rings them like the Clock app; in a browser they ring only while the page is open. */
 const AL = { st: null, last: Date.now(), ringing: null, snoozed: [], edit: null };
 const DAYL = ['S', 'M', 'T', 'W', 'T', 'F', 'S'], DAYN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 let alDays = [];
 const alHM = a => `${pad(a.h)}:${pad(a.m)}`;
+const alWhenWord = ms => { if (!ms) return ''; const d = new Date(ms), t = new Date(); t.setHours(0, 0, 0, 0); const n = Math.round((new Date(d).setHours(0, 0, 0, 0) - t) / 864e5);
+  return n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : DAYN[d.getDay()]; };   // when it next rings, on this phone's clock
 const alRep = days => days.length === 7 ? 'Every day' : days.length === 5 && [1, 2, 3, 4, 5].every(d => days.includes(d)) ? 'Weekdays'
   : days.length === 2 && days.includes(0) && days.includes(6) ? 'Weekends' : days.length ? days.slice().sort().map(d => DAYN[d]).join(' ') : 'Once';
 function alNextLocal(a, from) { // next time a's clock time comes round on this device, after `from`
@@ -2228,9 +2232,9 @@ function alTidy() { // a one-off alarm switches itself off once it has rung
 // everything that should ring, as the iPhone app schedules it
 function alarmsForNative(now = Date.now()) { // `now`: only what rings after this
   const list = [];
-  S.alarm.list.forEach(a => { if (!a.on) return; const title = a.label || 'Alarm';
-    if (a.days.length) list.push({ key: 'm' + a.id, h: a.h, m: a.m, days: a.days.slice().sort(), title, sub: alRep(a.days), snd: a.snd || 'default' });
-    else { const at = alNextLocal(a, a.armed || 0); if (at && at > now) list.push({ key: 'm' + a.id, at, h: a.h, m: a.m, title, sub: '', snd: a.snd || 'default' }); } });
+  S.alarm.list.forEach(a => { if (!a.on) return; const title = 'Alarm';
+    if (a.days.length) list.push({ key: 'm' + a.id, h: a.h, m: a.m, days: a.days.slice().sort(), title, sub: alRep(a.days), snd: 'axiom' });
+    else { const at = alNextLocal(a, a.armed || 0); if (at && at > now) list.push({ key: 'm' + a.id, at, h: a.h, m: a.m, title, sub: '', snd: 'axiom' }); } });
   return { on: true, snooze: S.alarm.snooze, list: list.slice(0, 40) };
 }
 const alWhen = (x, from) => x.at || alNextLocal({ h: x.h, m: x.m, days: x.days }, from);
@@ -2254,19 +2258,18 @@ function renderAlarm() {
   $('#alSn').innerHTML = [5, 9, 15].map(v => `<button type="button" class="tab" data-alsn="${v}" aria-pressed="${A.snooze === v}">${v}</button>`).join('');
   const nx = alUpcoming()[0];
   $('#alNext').innerHTML = nx ? `<div class="alhd"><div class="bign">${alHM(nx)}</div><div class="in">in ${dur(nx.when - now).replace(/^00H /, '').toLowerCase()}</div>
-      <div class="what">${esc(nx.title)}<small>${DAYN[new Date(nx.when).getDay()]}${nx.sub && nx.sub !== 'Once' && nx.sub !== DAYN[new Date(nx.when).getDay()] ? ' · ' + esc(nx.sub) : ''}</small></div></div>`
+      <div class="what">${esc(nx.sub || 'Once')}<small>${alWhenWord(nx.when)}</small></div></div>`
     : `<div class="empty">No alarm on.</div>`;
   $('#alList').innerHTML = A.list.length ? A.list.slice().sort((a, b) => a.h * 60 + a.m - b.h * 60 - b.m).map(a => `<li class="it${a.on ? '' : ' off'}${AL.edit === a.id ? ' editing' : ''}">
-      <button class="ck" type="button" data-alon="${a.id}" aria-pressed="${!!a.on}" aria-label="${a.on ? 'Turn off' : 'Turn on'} ${esc(a.label || 'alarm')} ${alHM(a)}"></button>
-      <button class="ed" type="button" data-aledit="${a.id}" aria-label="Edit ${esc(a.label || 'alarm')} ${alHM(a)}"><span class="tm">${alHM(a)}</span><span class="tx">${esc(a.label || 'Alarm')}<small>${alRep(a.days)}${a.snd && a.snd !== 'default' ? ' · ' + ALSND[a.snd] : ''}</small></span></button>
-      <button class="x" type="button" data-aldel="${a.id}" aria-label="Delete ${esc(a.label || 'alarm')} ${alHM(a)}">${ic('x')}</button></li>`).join('')
-    : '<li class="empty">No alarms yet. Pick a time below, add a label and the days it repeats, then tap +.</li>';
-  $('#alSnd').innerHTML = Object.entries(ALSND).map(([k, l]) => `<button type="button" class="tab" data-alsnd="${k}" aria-pressed="${alSndPick === k}">${l}</button>`).join('');
+      <button class="ck" type="button" data-alon="${a.id}" aria-pressed="${!!a.on}" aria-label="${a.on ? 'Turn off' : 'Turn on'} the ${alHM(a)} alarm"></button>
+      <button class="ed" type="button" data-aledit="${a.id}" aria-label="Edit the ${alHM(a)} alarm"><span class="tm">${alHM(a)}</span><span class="tx">${alRep(a.days)}<small>${a.on ? alWhenWord(alNextLocal(a, a.days.length ? Date.now() : Math.max(Date.now(), a.armed || 0))) : 'Off'}</small></span></button>
+      <button class="x" type="button" data-aldel="${a.id}" aria-label="Delete the ${alHM(a)} alarm">${ic('x')}</button></li>`).join('')
+    : '<li class="empty">No alarms yet. Swipe the time below, pick the days it repeats (or none for once), then tap +.</li>';
   $('#alDays').innerHTML = DAYL.map((l, i) => `<button type="button" class="tab" data-alday="${i}" aria-pressed="${alDays.includes(i)}" aria-label="${DAYN[i]}">${l}</button>`).join('');
   const editing = !!AL.edit; $('#alCancel').hidden = !editing;
   if ($('#alAdd').dataset.mode !== String(editing)) { $('#alAdd').dataset.mode = String(editing); setIc($('#alAdd'), editing ? 'check' : 'plus', editing ? 'Save alarm' : 'Add alarm'); }
 }
-function alEditEnd() { AL.edit = null; alDays = []; $('#alLabel').value = ''; }   // the sound stays as last picked, handy for the next alarm
+function alEditEnd() { AL.edit = null; alDays = []; }
 $('#pAlarm').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return; const d = b.dataset, A = S.alarm;
   if (d.alsn != null) { A.snooze = +d.alsn; }
@@ -2274,9 +2277,9 @@ $('#pAlarm').addEventListener('click', e => {
   else if (d.alon) { const a = A.list.find(x => x.id === d.alon); if (!a) return; a.on = !a.on; if (a.on) a.armed = Date.now(); }
   else if (d.aldel) { A.list = A.list.filter(x => x.id !== d.aldel); if (AL.edit === d.aldel) alEditEnd(); }
   else if (d.aledit) { const a = A.list.find(x => x.id === d.aledit); if (!a) return;
-    AL.edit = a.id; alDays = a.days.slice(); alSndPick = a.snd || 'default'; alPickSet(a.h, a.m, true); $('#alLabel').value = a.label || ''; renderAlarm(); $('#pAlarm').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); $('#alWH').focus({ preventScroll: true }); return; }
+    AL.edit = a.id; alDays = a.days.slice(); alPickSet(a.h, a.m, true); renderAlarm(); $('#pAlarm').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); $('#alWH').focus({ preventScroll: true }); return; }
   else if (b.id === 'alCancel') { alEditEnd(); renderAlarm(); return; }
-  else if (d.alsnd) { alSndPick = d.alsnd; unlockAudio(); alPlay(d.alsnd, 2.2); renderAlarm(); const f = $(`[data-alsnd="${d.alsnd}"]`); if (f) f.focus(); return; }
+  else if (b.id === 'alHear') { if (alOut) { alPlayStop(); return; } alPlay('axiom', 7.2); b.classList.add('on'); return; }
   else if (d.alday != null) { const i = +d.alday; alDays = alDays.includes(i) ? alDays.filter(x => x !== i) : [...alDays, i]; renderAlarm(); return; }
   else return;
   unlockAudio(); save('alarm'); renderAlarm();
@@ -2286,7 +2289,7 @@ $('#pAlarm').addEventListener('click', e => {
 $('#alForm').addEventListener('submit', e => {
   e.preventDefault(); const v = $('#alTime').value; if (!/^\d\d:\d\d$/.test(v)) return;
   unlockAudio();
-  const vals = { h: +v.slice(0, 2), m: +v.slice(3, 5), label: $('#alLabel').value.trim(), days: alDays.slice().sort(), snd: alSndPick, on: true, armed: Date.now() };
+  const vals = { h: +v.slice(0, 2), m: +v.slice(3, 5), days: alDays.slice().sort(), on: true, armed: Date.now() };
   const a = AL.edit && S.alarm.list.find(x => x.id === AL.edit);
   if (a) Object.assign(a, vals); else S.alarm.list.push({ id: uid(), ...vals });
   alEditEnd(); save('alarm'); renderAlarm();
@@ -2413,23 +2416,24 @@ alSeg($('#alFH'), $('#alWH'), 24); alSeg($('#alFM'), $('#alWM'), 60);
 { const d = new Date(Date.now() + 60 * 60e3); alPickSet(d.getHours(), 0); }   // starts on the next full hour
 /* alarm sounds. "iPhone" is the phone's own alarm sound; the others are Axiom's, made by tools/make-alarm-sounds.py
    and played here with the same patterns (for the preview, and for ringing in a browser) */
-const ALSND = { default: 'iPhone', beep: 'Beep', chime: 'Chime', buzz: 'Buzz' };
-let alSndPick = 'default', alOut = null;
-function alPlayStop() { if (alOut) { try { alOut.gain.cancelScheduledValues(0); alOut.disconnect(); } catch (e) {} alOut = null; } }
+let alOut = null, alOutT = 0;
+function alPlayStop() { clearTimeout(alOutT); if (alOut) { try { alOut.disconnect(); } catch (e) {} alOut = null; } const b = $('#alHear'); if (b) b.classList.remove('on'); }
+/* Axiom's chime: three bell notes, high-low-higher (G5, E5, C6), like a cabin chime that ends looking up.
+   Soft at first and growing; after 14 s the rounds come quicker with an octave bell on top. Same as App/Sounds/axiom-chime.wav. */
 function alPlay(kind, secs) {
   unlockAudio(); if (!actx) return; alPlayStop();
-  const out = alOut = actx.createGain(); out.gain.value = .32; out.connect(actx.destination);
-  const t0 = actx.currentTime + .03, end = t0 + secs;
-  const tone = (type, f, at, dur, vol, decay) => { if (at >= end) return;
-    const o = actx.createOscillator(), g = actx.createGain(); o.type = type; o.frequency.setValueAtTime(f, at);
-    g.gain.setValueAtTime(.0001, at); g.gain.exponentialRampToValueAtTime(vol, at + .005);
-    if (decay) g.gain.exponentialRampToValueAtTime(.0001, at + dur); else { g.gain.setValueAtTime(vol, at + dur - .012); g.gain.exponentialRampToValueAtTime(.0001, at + dur); }
-    o.connect(g).connect(out); o.start(at); o.stop(at + dur + .02); };
-  const k = ALSND[kind] ? kind : 'default';
-  if (k === 'beep' || k === 'default') for (let p = 0; p < secs; p += 1) for (let i = 0; i < 4; i++) tone('square', 2048, t0 + p + i * .125, .075, .35);   // the classic four quick beeps
-  if (k === 'default' && nativeH()) { out.gain.value = 0; }   // in the app the iPhone plays its own sound, which a web page can't preview
-  if (k === 'chime') for (let p = 0; p < secs; p += 2) [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone('sine', f, t0 + p + i * .18, 1.6, .7, true));
-  if (k === 'buzz') for (let p = 0; p < secs; p += 1.2) for (let i = 0; i < 4; i++) tone('sawtooth', i % 2 ? 440 : 520, t0 + p + i * .175, .175, .28);
+  const out = alOut = actx.createGain(); out.gain.value = .5; out.connect(actx.destination);
+  const t0 = actx.currentTime + .03;
+  const bell = (f, at, vol) => [[1, 1, 1], [2, .35, 1.6], [2.76, .22, 2.6], [5.4, .08, 4.5]].forEach(([r, a, d]) => {
+    const o = actx.createOscillator(), g = actx.createGain(); o.frequency.value = f * r;
+    g.gain.setValueAtTime(.0001, at); g.gain.exponentialRampToValueAtTime(Math.max(.0002, vol * a * .3), at + .003); g.gain.exponentialRampToValueAtTime(.0001, at + 1.6 / d);
+    o.connect(g).connect(out); o.start(at); o.stop(at + 1.9); });
+  for (let t = 0; t < secs;) {
+    const late = t >= 14, vol = .45 + .55 * Math.min(1, t / 12);
+    [[783.99, 0], [659.25, .32], [1046.5, .64]].forEach(([f, g], k) => { if (t + g < secs) { bell(f, t0 + t + g, vol * (k < 2 ? 1 : 1.15)); if (late) bell(f * 2, t0 + t + g, vol * .35); } });
+    t += late ? 1.6 : 2.4;
+  }
+  alOutT = setTimeout(alPlayStop, secs * 1000 + 1900);
 }
 // the iPhone app reports whether iOS let it set the alarms
 window.axiomAlarmStatus = st => { AL.st = st || null; renderAlarm(); };
@@ -2439,7 +2443,7 @@ function alShow(x) {
   AL.ringing = x;
   const now = new Date();
   const tm = x.h != null ? alHM(x) : `${pad(now.getHours())}:${pad(now.getMinutes())}`;
-  const msg = `<span>ALARM</span><span>${esc(x.title || 'Alarm')}</span><span>${tm}</span><span>${DAYN[now.getDay()]}</span>`;
+  const msg = `<span>ALARM</span>${x.title && x.title !== 'Alarm' ? `<span>${esc(x.title)}</span>` : ''}<span>${tm}</span><span>${DAYN[now.getDay()]}</span>`;
   $('#alRD').innerHTML = msg + msg + msg + msg;   // runs across like the LED ticker; four copies so the loop is seamless
   $('#alRT').textContent = tm;
   $('#alRW').textContent = x.title || 'Alarm'; $('#alRS').textContent = x.sub && x.sub !== 'Once' ? x.sub : '';
@@ -2448,7 +2452,7 @@ function alShow(x) {
 }
 function alHide() { clearInterval(AL.rt); alPlayStop(); AL.ringing = null; $('#alRing').hidden = true; renderAlarm(); }
 function alRing(x) { // browser only
-  unlockAudio(); alShow(x); clearInterval(AL.rt); alPlay(x.snd, 6); AL.rt = setInterval(() => alPlay(x.snd, 6), 6000);
+  unlockAudio(); alShow(x); clearInterval(AL.rt); alPlay('axiom', 28); AL.rt = setInterval(() => alPlay('axiom', 28), 28000);
   setTimeout(() => { if (AL.ringing === x) alHide(); }, 10 * 60e3);
 }
 function alNative(action) { // the app stops or snoozes the alarm iOS is ringing

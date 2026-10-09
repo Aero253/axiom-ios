@@ -195,7 +195,7 @@ final class WidgetPreviewTests: XCTestCase {
         draw("22-alarm-lock-rect", rect, accessory: true) { AlarmView(forcedFamily: .accessoryRectangular, entry: pe) }
         draw("22-alarm-lock-inline", inline, accessory: true) { AlarmView(forcedFamily: .accessoryInline, entry: pe) }
         draw("23-snooze-lock-screen", CGSize(width: 364, height: 96), accessory: true) {
-            SnoozeCard(title: "Gym", sub: "Mon Wed Fri", fireDate: nil, remaining: 8 * 60 + 41).background(Color.black)
+            SnoozeCard(title: "Alarm", sub: "Mon Wed Fri", fireDate: nil, remaining: 8 * 60 + 41).background(Color.black)
         }
 
         // before Axiom has ever been opened

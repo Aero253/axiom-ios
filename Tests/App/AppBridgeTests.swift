@@ -75,14 +75,12 @@ final class AppBridgeTests: XCTestCase {
     }
 
     func testAlarmSounds() {
-        for n in ["axiom-beep", "axiom-chime", "axiom-buzz"] {
-            XCTAssertNotNil(Bundle.main.url(forResource: n, withExtension: "wav"), "\(n).wav is in the app")
-        }
+        XCTAssertNotNil(Bundle.main.url(forResource: "axiom-chime", withExtension: "wav"), "Axiom's chime is in the app")
         var a = AlarmItem(key: "m1", at: nil, h: 6, m: 30, days: [1], title: "Gym", sub: nil)
         XCTAssertNil(a.soundFile, "no choice: the iPhone's own alarm sound")
         let before = AlarmScheduler.id(for: a, snooze: 9)
-        a.snd = "beep"
-        XCTAssertEqual(a.soundFile, "axiom-beep.wav")
+        a.snd = "axiom"
+        XCTAssertEqual(a.soundFile, "axiom-chime.wav")
         XCTAssertNotEqual(before, AlarmScheduler.id(for: a, snooze: 9), "a new sound sets the alarm again")
     }
 }

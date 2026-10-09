@@ -189,10 +189,10 @@ struct AlarmItem: Codable, Hashable {
     var days: [Int]?         // 0 = Sunday … 6 = Saturday, as in JavaScript
     var title: String
     var sub: String?
-    var snd: String? = nil   // "default" (the iPhone's alarm sound), "beep", "chime" or "buzz"
+    var snd: String? = nil   // "axiom": Axiom's own chime; nil or "default": the iPhone's alarm sound
 
-    /// The file in the app for an Axiom sound, or nil for the iPhone's own.
-    var soundFile: String? { ["beep", "chime", "buzz"].contains(snd ?? "") ? "axiom-\(snd!).wav" : nil }
+    /// The sound file in the app, or nil for the iPhone's own alarm sound.
+    var soundFile: String? { snd == nil || snd == "default" ? nil : "axiom-chime.wav" }
 
     /// The next time this rings after `date`, on this phone's clock.
     func next(after date: Date, calendar: Calendar = .current) -> Date? {

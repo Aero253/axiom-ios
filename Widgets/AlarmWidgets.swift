@@ -21,6 +21,12 @@ struct AlarmView: View {
         TimeFmt.f("EEE", i.isDuty ? "Asia/Bangkok" : TimeZone.current.identifier).string(from: d).uppercased()
     }
 
+    /// Alarms have no names now: say when it repeats ("Weekdays", "Mon Wed Fri") or "Once".
+    static func when(_ i: AlarmItem) -> String {
+        if i.title != "Alarm" && !i.title.isEmpty { return i.title }
+        return i.sub?.isEmpty == false ? i.sub! : "Once"
+    }
+
     var body: some View {
         if let n = entry.payload?.alarms?.next(after: entry.date) {
             let item = n.item, at = n.at
@@ -34,7 +40,7 @@ struct AlarmView: View {
                         Text(time(item, at)).font(Ax.mono(15, .bold))
                     }
                     .widgetAccentable()
-                    Text(item.title).font(Ax.mono(12)).lineLimit(1)
+                    Text(Self.when(item)).font(Ax.mono(12)).lineLimit(1)
                     Text("in \(Fmt.countdown(at.timeIntervalSince(entry.date)).lowercased())").font(Ax.mono(11)).foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -50,9 +56,9 @@ struct AlarmView: View {
                     DotText(text: time(item, at), height: 34, showUnlit: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     Spacer(minLength: 0)
-                    Text(item.title).font(Ax.mono(12, .bold)).lineLimit(1).minimumScaleFactor(0.7)
+                    Text(Self.when(item)).font(Ax.mono(12, .bold)).lineLimit(1).minimumScaleFactor(0.7)
                     HStack {
-                        Text(item.sub?.isEmpty == false ? item.sub! : (item.at == nil ? "Repeats" : "Once"))
+                        Text("Rings in")
                             .font(Ax.mono(10)).foregroundStyle(.secondary).lineLimit(1)
                         Spacer(minLength: 2)
                         Text(Fmt.countdown(at.timeIntervalSince(entry.date))).font(Ax.mono(11, .bold))
