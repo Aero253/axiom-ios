@@ -5,11 +5,12 @@ import CoreLocation
 struct HerePlace: Codable, Equatable {
     var lat: Double
     var lon: Double
-    var name: String
+    var name: String          // the district (Lak Si, Mueang Chiang Mai), or the town
     var tz: String
-    var at: Double        // when it was found, ms since 1970
+    var at: Double            // when it was found, ms since 1970
+    var province: String? = nil
 
-    var city: WxCity { WxCity(code: "HERE", name: name, lat: lat, lon: lon, tz: tz, current: nil, daily: []) }
+    var city: WxCity { WxCity(code: "HERE", name: name, lat: lat, lon: lon, tz: tz, current: nil, daily: [], sub: province) }
 }
 
 enum Here {
@@ -34,21 +35,36 @@ enum Here {
         }
     }
 
+    /// District and province in English, without the "Khet" / "Amphoe" / "Chang Wat" words: ("Lak Si", "Bangkok").
+    static func names(_ pm: CLPlacemark) -> (String?, String?) {
+        func clean(_ s: String?) -> String? {
+            guard var t = s?.trimmingCharacters(in: .whitespaces), !t.isEmpty else { return nil }
+            for p in ["Khet ", "Amphoe ", "Chang Wat ", "Changwat "] where t.hasPrefix(p) { t.removeFirst(p.count) }
+            for x in [" District", " Province"] where t.hasSuffix(x) { t.removeLast(x.count) }
+            if t == "Krung Thep Maha Nakhon" || t == "Bangkok Metropolis" { t = "Bangkok" }
+            return t
+        }
+        let district = clean(pm.subAdministrativeArea) ?? clean(pm.locality) ?? clean(pm.subLocality)
+        var province = clean(pm.administrativeArea)
+        if province == district { province = nil }
+        return (district ?? province ?? clean(pm.name), district == nil ? nil : province)
+    }
+
     /// Find the phone once (town-level accuracy, a few seconds at most), name the place, and keep it.
     @MainActor
     static func refresh(timeout: TimeInterval = 8) async -> HerePlace? {
         guard let loc = await OneShot().locate(timeout: timeout) else { return load() }
-        var name = load().flatMap { old in
-            CLLocation(latitude: old.lat, longitude: old.lon).distance(from: loc) < 3000 ? old.name : nil
-        }
-        var tz = TimeZone.current.identifier
-        if name == nil, let pm = try? await CLGeocoder().reverseGeocodeLocation(loc).first {
-            name = pm.locality ?? pm.subAdministrativeArea ?? pm.administrativeArea ?? pm.name
+        // the same place as last time (within 3 km): keep its names and skip the lookup
+        let old = load().flatMap { o in CLLocation(latitude: o.lat, longitude: o.lon).distance(from: loc) < 3000 && o.province != nil ? o : nil }
+        var name = old?.name, province = old?.province
+        var tz = old?.tz ?? TimeZone.current.identifier
+        if old == nil, let pm = try? await CLGeocoder().reverseGeocodeLocation(loc, preferredLocale: Locale(identifier: "en_US")).first {
+            (name, province) = names(pm)
             if let z = pm.timeZone { tz = z.identifier }
         }
         let h = HerePlace(lat: (loc.coordinate.latitude * 100).rounded() / 100,       // about 1 km: enough for weather
                           lon: (loc.coordinate.longitude * 100).rounded() / 100,
-                          name: name ?? "Here", tz: tz, at: Date().timeIntervalSince1970 * 1000)
+                          name: name ?? "Here", tz: tz, at: Date().timeIntervalSince1970 * 1000, province: province)
         save(h)
         return h
     }

@@ -125,6 +125,7 @@ struct WxCity: Codable, Hashable {
     var tz: String
     var current: WxNow?
     var daily: [WxDay]
+    var sub: String? = nil    // your location only: the province under the district's name
 }
 
 struct Weather: Codable {

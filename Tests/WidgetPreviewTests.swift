@@ -78,9 +78,10 @@ final class WidgetPreviewTests: XCTestCase {
 
     @MainActor
     func testHereIsFirstCity() {
-        let h = HerePlace(lat: 18.79, lon: 98.98, name: "Chiang Mai", tz: "Asia/Bangkok", at: 0)
+        let h = HerePlace(lat: 18.79, lon: 98.98, name: "Mueang Chiang Mai", tz: "Asia/Bangkok", at: 0, province: "Chiang Mai")
         XCTAssertEqual(h.city.code, "HERE")
-        XCTAssertEqual(h.city.name, "Chiang Mai")
+        XCTAssertEqual(h.city.name, "Mueang Chiang Mai")
+        XCTAssertEqual(h.city.sub, "Chiang Mai")
         var wx = payload.wx!
         var here = h.city
         here.current = wx.cities.first?.current; here.daily = wx.cities.first?.daily ?? []   // the picture needs some weather in it
