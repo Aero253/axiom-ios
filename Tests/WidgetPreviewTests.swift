@@ -76,6 +76,19 @@ final class WidgetPreviewTests: XCTestCase {
         XCTAssertEqual(items.count, payload.todos?.count)
     }
 
+    @MainActor
+    func testHereIsFirstCity() {
+        let h = HerePlace(lat: 18.79, lon: 98.98, name: "Chiang Mai", tz: "Asia/Bangkok", at: 0)
+        XCTAssertEqual(h.city.code, "HERE")
+        XCTAssertEqual(h.city.name, "Chiang Mai")
+        var wx = payload.wx!
+        var here = h.city
+        here.current = wx.cities.first?.current; here.daily = wx.cities.first?.daily ?? []   // the picture needs some weather in it
+        wx.cities.insert(here, at: 0)
+        draw("16-weather-small-here", small) { WeatherView(forcedFamily: .systemSmall, entry: WxEntry(date: now, wx: wx, demo: false)) }
+        draw("16-weather-large-here", large) { WeatherView(forcedFamily: .systemLarge, entry: WxEntry(date: now, wx: wx, demo: false)) }
+    }
+
     func testSiriAnswers() throws {
         let next = Speak.nextReport(payload, now: now)
         print("Siri next report:", next)

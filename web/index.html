@@ -1486,7 +1486,7 @@ function rosterCities() { const t = todayISO(), end = addDays(t, 7), out = [base
   duties().filter(d => d.date >= t && d.date <= end && d.legs).forEach(d => d.legs.forEach(l => { if (!out.includes(l.to) && AP[l.to]) out.push(l.to); }));
   return out; }
 const PAUTO = {
-  wx: () => { const out = rosterCities(); for (const c of ['CNX', 'HKT', 'HDY']) if (out.length < 4 && !out.includes(c)) out.push(c); return out; },
+  wx: () => { const out = (AP.HERE ? ['HERE'] : []).concat(rosterCities()); for (const c of ['CNX', 'HKT', 'HDY']) if (out.length < 4 + (AP.HERE ? 1 : 0) && !out.includes(c)) out.push(c); return out; },   // where you are first (iPhone app)
   sun: () => rosterCities()
 };
 const PMAX = { wx: 8, sun: 8 };
@@ -1593,7 +1593,7 @@ function renderWx() {
   $('#wxTabs').innerHTML = list.map(c => `<button class="tab" data-wx="${esc(c)}" aria-pressed="${c === V.wx}">${esc(c)}</button>`).join('');
   if (!list.length) { $('#wxBody').innerHTML = '<div class="empty">No cities. Tap the pencil to add one.</div>'; return; }
   const c = WX && WX.cities && WX.cities.find(x => x.code === V.wx);
-  if (!c) { $('#wxBody').innerHTML = `<div class="empty">No forecast for ${esc(V.wx)} ${esc(apName(V.wx))} yet. ${navigator.onLine ? 'Loading…' : 'It loads next time you’re online.'}</div>`; return; }
+  if (!c) { $('#wxBody').innerHTML = `<div class="empty">No forecast for ${V.wx === 'HERE' ? esc(apName(V.wx)) : esc(V.wx) + ' ' + esc(apName(V.wx))} yet. ${navigator.onLine ? 'Loading…' : 'It loads next time you’re online.'}</div>`; return; }
   const t = todayISO();
   const days = (c.daily || []).filter(d => d.d >= t).slice(0, 5);
   const age = Date.now() - Date.parse(WX.updatedAt);
@@ -3163,11 +3163,24 @@ if (motionNow() !== 'calm') { // boot-up: AXIOM splash, then widgets rise and th
   document.body.classList.remove('booting');
   runSplash().then(() => { document.body.classList.add('booting'); DMF.flipAll(); setTimeout(() => document.body.classList.remove('booting'), 2800); });
 } else setTimeout(() => document.body.classList.remove('booting'), 2600);
+if (nativeH() && useHere(lsGet('here'))) V.wx = 'HERE';   // last known place, until the app sends a fresh one
 renderAll(); setSync(); tick(); setInterval(tick, 1000);
 DMF.walk(document.body);
 requestAnimationFrame(frame);
 refreshWx(); setInterval(refreshWx, 30 * 60e3); refreshFx(); setInterval(refreshFx, 60 * 60e3);
 // installable + offline when served from a website (e.g. GitHub Pages); opening the file directly needs none of this
+/* ---------- where you are (iPhone app) ----------
+   The app passes the phone's rough location and the town's name; it becomes the first weather city, "HERE". */
+function useHere(h) {
+  if (!h || !(Math.abs(h.lat) <= 90) || !(Math.abs(h.lon) <= 180)) return false;
+  AP.HERE = [h.lat, h.lon, h.name || 'Here']; TZ.HERE = h.tz || Intl.DateTimeFormat().resolvedOptions().timeZone; return true;
+}
+window.axiomHere = h => {
+  const first = !AP.HERE, moved = first || Math.abs(AP.HERE[0] - h.lat) > .05 || Math.abs(AP.HERE[1] - h.lon) > .05 || AP.HERE[2] !== h.name;
+  if (!useHere(h)) return; lsSet('here', h);
+  if (first) V.wx = 'HERE';
+  if (moved) { renderWx(); refreshWx(true); pushNative(); }
+};
 /* ---------- iPhone app bridge: only active inside the Axiom iPhone app, which shows this data in Home Screen widgets ---------- */
 // declared with var and looked up on call, so save() can run safely during start-up before this part of the file has run
 function nativeH() { try { return window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.axiom; } catch (e) { return null; } }

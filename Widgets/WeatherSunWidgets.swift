@@ -33,17 +33,25 @@ struct WxProvider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<WxEntry>) -> Void) {
-        let saved = Shared.loadWeather()
-        let demo = Shared.load()?.demo ?? false
-        let next = Date().addingTimeInterval(45 * 60)
-        guard let cities = saved?.cities, !cities.isEmpty else {
-            completion(Timeline(entries: [WxEntry(date: Date(), wx: saved, demo: demo)], policy: .after(next)))
-            return
-        }
-        fetch(cities) { fresh in
-            let wx = fresh ?? saved
-            if let f = fresh { Shared.saveWeather(f) }
-            completion(Timeline(entries: [WxEntry(date: Date(), wx: wx, demo: demo)], policy: .after(next)))
+        Task { @MainActor in
+            let saved = Shared.loadWeather()
+            let payload = Shared.load()
+            let demo = payload?.demo ?? false
+            let next = Date().addingTimeInterval(45 * 60)
+            // the cities set in Axiom (newest list from the dashboard), with where you are now in front
+            var cities = (payload?.wx?.cities ?? saved?.cities ?? []).filter { $0.code != "HERE" }
+            var here = await Here.refresh(timeout: 6)
+            if let h = here, Date().timeIntervalSince1970 * 1000 - h.at > 24 * 3600e3 { here = nil }   // a day-old place is no use
+            if let h = here { cities.insert(h.city, at: 0) }
+            guard !cities.isEmpty else {
+                completion(Timeline(entries: [WxEntry(date: Date(), wx: saved, demo: demo)], policy: .after(next)))
+                return
+            }
+            fetch(cities) { fresh in
+                let wx = fresh ?? saved
+                if let f = fresh { Shared.saveWeather(f) }
+                completion(Timeline(entries: [WxEntry(date: Date(), wx: wx, demo: demo)], policy: .after(next)))
+            }
         }
     }
 
@@ -121,7 +129,12 @@ struct WeatherView: View {
     private func small(_ c: WxCity) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Caption(text: "\(c.code) · \(c.name)")
+                if c.code == "HERE" {
+                    Image(systemName: "location.fill").font(.system(size: 8, weight: .bold)).foregroundStyle(.secondary)
+                    Caption(text: c.name)
+                } else {
+                    Caption(text: "\(c.code) · \(c.name)")
+                }
                 Spacer(minLength: 0)
             }
             Spacer(minLength: 0)
@@ -164,7 +177,7 @@ struct WeatherView: View {
                 HStack(spacing: 10) {
                     WxDots(cond: c.current?.cond ?? today(c)?.cond ?? "cloud", size: 26)
                     VStack(alignment: .leading, spacing: 0) {
-                        Text(c.code).font(Ax.mono(13, .bold))
+                        Text(c.code == "HERE" ? "Here" : c.code).font(Ax.mono(13, .bold))
                         Text(c.name).font(Ax.mono(10)).foregroundStyle(.secondary).lineLimit(1)
                     }
                     Spacer(minLength: 0)
@@ -185,7 +198,7 @@ struct WeatherWidget: Widget {
             WeatherView(entry: e).axiomBackground()
         }
         .configurationDisplayName("Weather")
-        .description("Your base and roster cities in dot pictures. Updates by itself every 45 minutes or so.")
+        .description("The weather where you are, then your base and roster cities, in dot pictures. Updates by itself every 45 minutes or so.")
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }

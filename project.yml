@@ -7,8 +7,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "1.2"
-    CURRENT_PROJECT_VERSION: "3"
+    MARKETING_VERSION: "1.3"
+    CURRENT_PROJECT_VERSION: "4"
     CODE_SIGN_STYLE: Manual
     CODE_SIGN_IDENTITY: ""
     CODE_SIGNING_REQUIRED: "NO"
@@ -52,6 +52,7 @@ targets:
         LSSupportsOpeningDocumentsInPlace: false
         NSAlarmKitUsageDescription: Axiom rings the alarms you set, even when your iPhone is locked or on silent.
         NSSupportsLiveActivities: true
+        NSLocationWhenInUseUsageDescription: Axiom shows the weather where you are, in the app and on the Weather widget. It only uses your rough location (the town).
     entitlements:
       path: App/Axiom.entitlements
       properties:
@@ -82,6 +83,7 @@ targets:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
         UIAppFonts:
           - AxiomDots.ttf
+        NSWidgetWantsLocation: true
     entitlements:
       path: Widgets/AxiomWidgets.entitlements
       properties:

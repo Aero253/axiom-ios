@@ -1,14 +1,16 @@
 import UIKit
 import WebKit
 import WidgetKit
+import CoreLocation
 
 /// Shows the Axiom dashboard (the same single HTML file, bundled in the app) full screen,
 /// and hands its next duties and water count to the Home Screen widgets.
-final class DashboardViewController: UIViewController, WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate {
+final class DashboardViewController: UIViewController, WKScriptMessageHandler, WKNavigationDelegate, WKUIDelegate, WKDownloadDelegate, CLLocationManagerDelegate {
     var webView: WKWebView!   // internal so the in-app tests can read the page
     private var darkTheme = true
     private var downloads: [ObjectIdentifier: URL] = [:]
     private let tick = UISelectionFeedbackGenerator()
+    private let place = CLLocationManager()   // only asks permission and hears the answer; Here finds the phone once at a time
 
     override var preferredStatusBarStyle: UIStatusBarStyle { darkTheme ? .lightContent : .darkContent }
 
@@ -125,6 +127,7 @@ final class DashboardViewController: UIViewController, WKScriptMessageHandler, W
         // alarms allowed or turned off in Settings since last time
         if let a = Shared.load()?.alarms { syncAlarms(a) }
         Task { await Reminders.sync(Shared.load(), ask: false) }   // a new day: fresh water reminders
+        refreshHere()   // moved on (a layover): the weather follows
     }
 
     /// Items ticked off on the To-do or Shopping widget: hand them to the dashboard, then forget them once it has them.
@@ -144,6 +147,27 @@ final class DashboardViewController: UIViewController, WKScriptMessageHandler, W
         if let w = Shared.load()?.water { sendWaterToPage(w) }
         sendListTicksToPage()
         sendRingingToPage()   // opened by tapping a ringing alarm
+        askForLocationOnce()
+        refreshHere()
+    }
+
+    // MARK: - Weather where you are
+
+    private func askForLocationOnce() {
+        place.delegate = self
+        if place.authorizationStatus == .notDetermined { place.requestWhenInUseAuthorization() }
+    }
+
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) { refreshHere() }
+
+    private func refreshHere() {
+        guard Here.allowed else { return }
+        Task { @MainActor in
+            guard let h = await Here.refresh(),
+                  let data = try? JSONEncoder().encode(h), let json = String(data: data, encoding: .utf8) else { return }
+            webView.evaluateJavaScript("window.axiomHere && window.axiomHere(\(json))", completionHandler: nil)
+            WidgetCenter.shared.reloadTimelines(ofKind: "AxiomWeather")
+        }
     }
 
     @objc private func wentToBackground() {
