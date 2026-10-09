@@ -131,7 +131,7 @@ struct WeatherView: View {
             HStack {
                 if c.code == "HERE" {
                     Image(systemName: "mappin.and.ellipse").font(.system(size: 9, weight: .bold)).foregroundStyle(.secondary)
-                    Caption(text: c.sub.map { "\(c.name), \($0)" } ?? c.name)
+                    Caption(text: c.name)   // the district; the large widget also shows the province
                 } else {
                     Caption(text: "\(c.code) · \(c.name)")
                 }
