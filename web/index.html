@@ -289,9 +289,7 @@ input.inp[type=time]::-webkit-datetime-edit, input.inp[type=date]::-webkit-datet
 #alSheet .aldays{justify-content:space-between}
 #alSheet .aldays .tab{flex:1; min-height:48px; font-size:14px}
 #alSheet .aldel{margin-top:auto; align-self:center; text-transform:none}
-.alnew{display:flex; justify-content:center}
-.alnew .btn{width:calc(var(--tap) * 1.35 / var(--z)); height:calc(var(--tap) * 1.35 / var(--z))}
-.alnew .ic{width:calc(22px / var(--z)); height:calc(22px / var(--z))}
+#pAlarm .ph .hr{display:flex; align-items:center; gap:10px}
 .al .ed .tm{font-size:28px}
 /* clock style: the same big dot digits as the dashboard clock; swipe a number up or down and the dots that change pop in */
 .alpick .alclk{display:none}
@@ -862,10 +860,9 @@ body.calm *, body.calm *::before, body.calm *::after{animation:none!important; t
     </section></div>
 
     <div class="w" data-w="alarm"><section class="p" id="pAlarm" aria-label="Alarm clock">
-      <div class="ph"><h2>Alarm</h2><span class="lbl" id="alSt"></span></div>
+      <div class="ph"><h2>Alarm</h2><div class="hr"><span class="lbl" id="alSt"></span><button type="button" class="btn pri ico" id="alNew" data-ic="plus" aria-label="New alarm" title="New alarm"></button></div></div>
       <div id="alNext"></div>
       <ul class="list al" id="alList" aria-label="Alarms"></ul>
-      <div class="alnew"><button type="button" class="btn pri ico" id="alNew" data-ic="plus" aria-label="New alarm" title="New alarm"></button></div>
       <div class="note" id="alNote"></div>
     </section></div>
 
