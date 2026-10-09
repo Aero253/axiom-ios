@@ -2478,6 +2478,7 @@ function alPlay(kind, secs) {
 }
 // the iPhone app reports whether iOS let it set the alarms
 window.axiomAlarmStatus = st => { AL.st = st || null; renderAlarm(); };
+window.axiomAlarmState = () => AL.st;   // for the app's own tests
 window.axiomAlarmPlan = () => alarmsForNative();
 // the ringing screen: in the app iOS plays the sound and this is the screen you see while using the phone; in a browser it rings too
 function alShow(x) {

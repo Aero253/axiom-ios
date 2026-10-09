@@ -56,10 +56,10 @@ final class AppBridgeTests: XCTestCase {
         let web = try XCTUnwrap((UIApplication.shared.delegate as? AppDelegate)?.window?.rootViewController as? DashboardViewController).webView!
         var note = ""
         waitFor(20, "the alarm status to reach the dashboard") {
-            web.evaluateJavaScript("document.querySelector('#alNote').textContent") { r, _ in note = (r as? String) ?? "" }
-            return note.contains("Clock app") || note.contains("notification")
+            web.evaluateJavaScript("JSON.stringify(window.axiomAlarmState ? window.axiomAlarmState() : null)") { r, _ in note = (r as? String) ?? "" }
+            return note.contains("alarmkit") || note.contains("notify")
         }
-        if #available(iOS 26.0, *) { XCTAssertTrue(note.contains("Clock app"), "AlarmKit on iOS 26: \(note)") }
+        if #available(iOS 26.0, *) { XCTAssertTrue(note.contains("alarmkit"), "AlarmKit on iOS 26: \(note)") }
     }
 
     func testAlarmIDs() {
