@@ -2318,7 +2318,7 @@ const alClick = e => {
   else if (d.aledit) { const a = A.list.find(x => x.id === d.aledit); if (a) alOpen(a); return; }
   else if (b.id === 'alCancel') { alClose(); return; }
   else if (b.id === 'alDel') { A.list = A.list.filter(x => x.id !== AL.edit); save('alarm'); alClose(); return; }
-  else if (b.id === 'alHear') { if (alOut) { alPlayStop(); return; } alPlay('axiom', 7.2); b.classList.add('on'); return; }
+  else if (b.id === 'alHear') { if (alOut) { alPlayStop(); return; } alPlay('axiom', 9.6); b.classList.add('on'); return; }
   else if (d.alday != null) { const i = +d.alday; alDays = alDays.includes(i) ? alDays.filter(x => x !== i) : [...alDays, i]; renderAlarm(); return; }
   else return;
   unlockAudio(); save('alarm'); renderAlarm();
@@ -2458,22 +2458,23 @@ alSeg($('#alFH'), $('#alWH'), 24); alSeg($('#alFM'), $('#alWM'), 60);
    and played here with the same patterns (for the preview, and for ringing in a browser) */
 let alOut = null, alOutT = 0;
 function alPlayStop() { clearTimeout(alOutT); if (alOut) { try { alOut.disconnect(); } catch (e) {} alOut = null; } const b = $('#alHear'); if (b) b.classList.remove('on'); }
-/* Axiom's chime: three bell notes, high-low-higher (G5, E5, C6), like a cabin chime that ends looking up.
-   Soft at first and growing; after 14 s the rounds come quicker with an octave bell on top. Same as App/Sounds/axiom-chime.wav. */
+/* Axiom's alarm: full volume from the start, bright digital tones. The Axiom motif high-low-higher (G6, E6, C7) twice,
+   then four fast beeps; quicker after 8 s, urgent after 16 s. Same schedule as App/Sounds/axiom-chime.wav (tools/make-alarm-sounds.py). */
 function alPlay(kind, secs) {
   unlockAudio(); if (!actx) return; alPlayStop();
-  const out = alOut = actx.createGain(); out.gain.value = .5; out.connect(actx.destination);
+  const out = alOut = actx.createGain(); out.gain.value = .22; out.connect(actx.destination);
   const t0 = actx.currentTime + .03;
-  const bell = (f, at, vol) => [[1, 1, 1], [2, .35, 1.6], [2.76, .22, 2.6], [5.4, .08, 4.5]].forEach(([r, a, d]) => {
+  const tone = (f, at, dur, stage) => { [[1, 1], [3, .33], [5, .15]].concat(stage ? [[2, .45]] : []).forEach(([r, a]) => {
     const o = actx.createOscillator(), g = actx.createGain(); o.frequency.value = f * r;
-    g.gain.setValueAtTime(.0001, at); g.gain.exponentialRampToValueAtTime(Math.max(.0002, vol * a * .3), at + .003); g.gain.exponentialRampToValueAtTime(.0001, at + 1.6 / d);
-    o.connect(g).connect(out); o.start(at); o.stop(at + 1.9); });
+    g.gain.setValueAtTime(0, at); g.gain.linearRampToValueAtTime(a, at + .004); g.gain.setValueAtTime(a, at + dur - .008); g.gain.linearRampToValueAtTime(0, at + dur);
+    o.connect(g).connect(out); o.start(at); o.stop(at + dur + .01); }); };
   for (let t = 0; t < secs;) {
-    const late = t >= 14, vol = .45 + .55 * Math.min(1, t / 12);
-    [[783.99, 0], [659.25, .32], [1046.5, .64]].forEach(([f, g], k) => { if (t + g < secs) { bell(f, t0 + t + g, vol * (k < 2 ? 1 : 1.15)); if (late) bell(f * 2, t0 + t + g, vol * .35); } });
-    t += late ? 1.6 : 2.4;
+    const st = t < 8 ? 0 : t < 16 ? 1 : 2, step = [.11, .095, .08][st]; let x = t;
+    for (let r = 0; r < (st < 2 ? 2 : 1); r++) { [1567.98, 1318.51, 2093].forEach(f => { if (x < secs) tone(f, t0 + x, step * .85, st); x += step; }); x += step * .5; }
+    for (let k = 0; k < 4; k++) { if (x < secs) tone(2637.02, t0 + x, .05, st); x += .085; }
+    t += [1.6, 1.2, .9][st];
   }
-  alOutT = setTimeout(alPlayStop, secs * 1000 + 1900);
+  alOutT = setTimeout(alPlayStop, secs * 1000 + 300);
 }
 // the iPhone app reports whether iOS let it set the alarms
 window.axiomAlarmStatus = st => { AL.st = st || null; renderAlarm(); };
