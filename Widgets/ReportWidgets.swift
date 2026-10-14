@@ -119,11 +119,11 @@ struct ReportCard: View {
                 FiveDots()
             }
             Text(st.route.joined(separator: " › "))
-                .font(.axiomDots(24))
+                .font(.axiomDots(22))
                 .foregroundStyle(.white)
                 .lineLimit(1)
                 .minimumScaleFactor(0.45)
-                .padding(.top, 12)
+                .padding(.top, 10)
             HStack(alignment: .bottom, spacing: 12) {
                 VStack(alignment: .leading, spacing: 5) {
                     capText(st.what == "Report" ? "Report" : "Starts")
@@ -133,20 +133,20 @@ struct ReportCard: View {
                 VStack(alignment: .trailing, spacing: 5) {
                     capText("In")
                     ReportCountdown(report: st.report, fixed: fixed)
-                        .font(.axiomDots(red ? 30 : 26))
+                        .font(.axiomDots(26))
                         .foregroundStyle(red ? Ax.red : Ax.yellow)
                         .multilineTextAlignment(.trailing)
                         .lineLimit(1)
                         .frame(maxWidth: 170, alignment: .trailing)
                 }
             }
-            .padding(.top, 12)
+            .padding(.top, 10)
             if !footer.isEmpty {
-                Text(footer).font(Ax.mono(11)).foregroundStyle(.white.opacity(0.55)).lineLimit(1).minimumScaleFactor(0.7).padding(.top, 10)
+                Text(footer).font(Ax.mono(11)).foregroundStyle(.white.opacity(0.55)).lineLimit(1).minimumScaleFactor(0.7).padding(.top, 8)
             }
         }
         .padding(.horizontal, 18)
-        .padding(.vertical, red ? 18 : 16)
+        .padding(.vertical, red ? 17 : 14)
         .overlay(alignment: .top) { if red { CautionTape(color: Ax.red).frame(height: 6) } }
         .overlay(alignment: .bottom) { if red { CautionTape(color: Ax.red).frame(height: 6) } }
     }
@@ -191,18 +191,29 @@ enum ReportIsland {
                 Rectangle().fill(.white.opacity(0.16)).frame(height: 1)
                 HStack(spacing: 8) {
                     if red { GoPill(text: "GO", size: 11) }
-                    Text(st.route.joined(separator: " › "))
-                        .font(.axiomDots(14)).foregroundStyle(.white)
-                        .lineLimit(1).minimumScaleFactor(0.5)
-                        .layoutPriority(1)
-                    Spacer(minLength: 6)
-                    Text(st.flights.joined(separator: " · "))
-                        .font(Ax.mono(11)).foregroundStyle(.white.opacity(0.55))
-                        .lineLimit(1).minimumScaleFactor(0.7)
+                    // route and flights when both fit; a long day shows just the route
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 8) {
+                            routeText.fixedSize()
+                            Spacer(minLength: 6)
+                            flightsText.fixedSize()
+                        }
+                        HStack(spacing: 0) {
+                            routeText.minimumScaleFactor(0.5)
+                            Spacer(minLength: 0)
+                        }
+                    }
                 }
             }
             .padding(.horizontal, 4)
             .padding(.top, 2)
+        }
+
+        private var routeText: some View {
+            Text(st.route.joined(separator: " › ")).font(.axiomDots(14)).foregroundStyle(.white).lineLimit(1)
+        }
+        private var flightsText: some View {
+            Text(st.flights.joined(separator: " · ")).font(Ax.mono(11)).foregroundStyle(.white.opacity(0.55)).lineLimit(1)
         }
     }
 
