@@ -152,6 +152,14 @@ struct ReportCard: View {
     }
 }
 
+/// Caution tape inside the expanded island: within the standard margins, with rounded ends so it sits in the island's shape.
+struct IslandTape: View {
+    var color: Color = Ax.yellow
+    var body: some View {
+        CautionTape(color: color).frame(height: 6).clipShape(Capsule())
+    }
+}
+
 /// The island's pieces, kept separate so the preview tests can lay them out too.
 enum ReportIsland {
     struct ReportTime: View {
@@ -187,8 +195,9 @@ enum ReportIsland {
         let st: ReportAttributes.ContentState
         let red: Bool
         var body: some View {
-            VStack(spacing: 8) {
-                Rectangle().fill(.white.opacity(0.16)).frame(height: 1)
+            VStack(spacing: 10) {
+                // caution tape like the Lock Screen card: yellow while there's time, red for the last 30 minutes
+                IslandTape(color: red ? Ax.red : Ax.yellow)
                 HStack(spacing: 8) {
                     if red { GoPill(text: "GO", size: 11) }
                     // route and flights when both fit; a long day shows just the route
@@ -204,6 +213,7 @@ enum ReportIsland {
                         }
                     }
                 }
+                IslandTape(color: red ? Ax.red : Ax.yellow)
             }
             .padding(.horizontal, 4)
             .padding(.top, 2)

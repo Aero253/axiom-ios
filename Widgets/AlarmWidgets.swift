@@ -188,12 +188,15 @@ struct AlarmLiveActivity: Widget {
                     Self.countdown(context.state).font(.axiomDots(22)).foregroundStyle(Ax.yellow)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    HStack {
-                        Text(context.attributes.metadata?.title ?? "Alarm").font(Ax.mono(13)).lineLimit(1)
-                        Spacer(minLength: 8)
-                        if let f = Self.fireDate(context.state) {
-                            Text("Rings again \(TimeFmt.hm(f, TimeZone.current.identifier))").font(Ax.mono(11)).foregroundStyle(.white.opacity(0.6)).lineLimit(1)
+                    VStack(spacing: 10) {
+                        HStack {
+                            Text(context.attributes.metadata?.title ?? "Alarm").font(Ax.mono(13)).lineLimit(1)
+                            Spacer(minLength: 8)
+                            if let f = Self.fireDate(context.state) {
+                                Text("Rings again \(TimeFmt.hm(f, TimeZone.current.identifier))").font(Ax.mono(11)).foregroundStyle(.white.opacity(0.6)).lineLimit(1)
+                            }
                         }
+                        IslandTape(color: Ax.yellow)
                     }
                     .padding(.horizontal, 4)
                 }
