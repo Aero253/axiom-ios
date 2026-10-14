@@ -533,6 +533,13 @@ body.editing .wi > .p{outline:1.5px dashed var(--faint); outline-offset:-1.5px}
 .legs li{display:flex; justify-content:space-between; gap:8px; font:500 13px/1.3 var(--f-mono); border-bottom:1px dotted var(--line); padding-bottom:4px}
 .legs li:last-child{border-bottom:0}
 .dest{font:500 12px/1.4 var(--f-mono); color:var(--dim)}
+/* the tapped day's duty, right under the calendar */
+.cday{display:grid; gap:10px; padding:12px; border-radius:6px; background:var(--raise); border:1px solid var(--line)}
+.cday .cdh{display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap}
+.cday .cdh .lbl{font-size:12px; color:var(--ink)}
+.cday .kv{row-gap:12px}
+.cday .legs li{font-size:12px}
+.cday .legs .bt{color:var(--dim); margin-left:8px}
 
 /* lists */
 .add{display:flex; gap:6px}
@@ -751,6 +758,7 @@ body.calm *, body.calm *::before, body.calm *::after{animation:none!important; t
       </div>
       <div id="calMsg"></div>
       <div class="cal" id="cal" role="grid"></div>
+      <div class="cday" id="calDay" aria-live="polite"></div>
       <div class="stats" id="stats"></div>
       <div class="legend">
         <span class="chip" data-type="FDP"><span>Flight</span></span>
@@ -1454,6 +1462,31 @@ function renderCal() {
   const st = (k, v) => `<div class="stat"><span class="lbl">${k}</span><span class="v">${v}</span></div>`;
   $('#stats').innerHTML = st('Flight days', fd.length) + st('Sectors', sectors) + st('Duty hrs', `${Math.floor(dutyMin / 60)}:${pad(Math.round(dutyMin % 60))}`)
     + st('Standby', md.filter(d => d.type === 'HSBY' || d.type === 'ASBY').length) + st('Days off', md.filter(d => d.type === 'OFF').length);
+  renderCalDay();
+}
+
+/* ---------- the tapped day, under the calendar: report, off duty, length, flights ---------- */
+function renderCalDay() {
+  const el = $('#calDay'); if (!el) return;
+  const ds = V.sel, d = dutyOn(ds), hm = m => `${Math.floor(m / 60)}:${pad(Math.round(m % 60))}`;
+  const evs = S.events.filter(e => e.date === ds).sort((a, b) => (a.time || '99').localeCompare(b.time || '99'));
+  let h = `<div class="cdh"><span class="lbl">${ds === todayISO() ? 'Today · ' : ''}${longDate(ds)}${demo() && d ? ' · example' : ''}</span>${d ? `<span class="tag" data-type="${d.type}">${esc(d.type === 'FDP' ? 'Flight duty' : d.label || TYPES[d.type] || d.type)}</span>` : ''}</div>`;
+  if (d) {
+    const s = span(d), fdp = d.type === 'FDP', legs = d.legs || [];
+    const kv = (k, v) => `<div><div class="lbl">${k}</div><div class="v">${v}</div></div>`;
+    let cells = '';
+    if (s) cells += kv(fdp ? 'Report' : 'From', esc(d.start)) + kv(fdp ? 'Off duty' : 'Until', esc(d.end)) + kv(fdp ? 'Duty' : 'Length', hm((s[1] - s[0]) / 60000));
+    const timed = legs.filter(l => l.dep && l.arr && !l.pos), blk = timed.reduce((a, l) => a + (t2m(l.arr) - t2m(l.dep) + 1440) % 1440, 0);
+    if (legs.length) cells += kv('Sectors', legs.filter(l => !l.pos).length) + (blk ? kv('Block', hm(blk)) : '') + (legs[0].dep ? kv('Departs', esc(legs[0].dep)) : '');
+    if (cells) h += `<div class="kv">${cells}</div>`;
+    if (legs.length) h += `<ul class="legs">${legs.map(l => `<li><span>${esc(l.flt || '')}${l.pos ? ' (DH)' : ''} ${esc(l.from)}<span style="color:var(--dim)"> ▸ </span>${esc(l.to)}</span><span class="mono">${l.dep ? esc(l.dep) + '–' + esc(l.arr) : ''}${l.dep && l.arr ? `<span class="bt">${hm((t2m(l.arr) - t2m(l.dep) + 1440) % 1440)}</span>` : ''}</span></li>`).join('')}</ul>`;
+    const last = legs.length ? legs[legs.length - 1].to : '', away = last && last !== base();
+    const names = dests(d).filter(c => AP[c]).map(c => AP[c][2]);
+    if (away) h += `<div class="dest">Night stop · ${esc(AP[last] ? AP[last][2] : last)}</div>`;
+    else if (names.length) h += `<div class="dest">${esc(names.join(' · '))}</div>`;
+  } else h += `<div class="dest">Nothing rostered.</div>`;
+  if (evs.length) h += `<div class="dest">Plans · ${evs.map(e => esc((e.time ? e.time + ' ' : '') + e.title)).join(' · ')}</div>`;
+  el.innerHTML = h;
 }
 
 /* ---------- selected day ---------- */
