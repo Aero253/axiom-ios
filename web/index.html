@@ -495,9 +495,10 @@ body.editing .wi > .p{outline:1.5px dashed var(--faint); outline-offset:-1.5px}
   display:flex; flex-direction:column; gap:3px; min-width:0; position:relative}
 .cell:hover{border-color:var(--faint)}
 .cell.out{opacity:.38}
-.cell.today{border-color:var(--ink); border-width:1.5px}
-.cell.today .n::after{content:""; display:inline-block; width:5px; height:5px; border-radius:50%; background:var(--ink); margin-left:5px; vertical-align:middle}
+.cell.today{border-color:var(--route); border-width:2px}   /* today: a red line around the day */
+.cell.today .n::after{content:""; display:inline-block; width:5px; height:5px; border-radius:50%; background:var(--route); margin-left:5px; vertical-align:middle}
 .cell[aria-pressed="true"]{outline:2px solid var(--accent); outline-offset:-2px}
+.cell.today[aria-pressed="true"]{outline-offset:-5px}   /* today and tapped: the red line stays outside the white one */
 .cell .n{font:700 15px/1 var(--f-led); font-variant-numeric:tabular-nums}
 .chip{display:flex; align-items:center; gap:4px; font:600 11px/1.1 var(--f-mono); letter-spacing:.04em; min-width:0}
 .chip::before{content:""; width:8px; height:8px; border-radius:50%; flex:none; box-sizing:border-box; background:currentColor; border:1.5px solid currentColor}
