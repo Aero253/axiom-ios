@@ -4,6 +4,7 @@ import WidgetKit
 enum Ax {
     static let yellow = Color(red: 1.0, green: 0.769, blue: 0.0)      // #ffc400, the dashboard's caution yellow
     static let red = Color(red: 1.0, green: 0.255, blue: 0.212)       // #ff4136, the route and "go" red
+    static let rain = Color(red: 0.239, green: 0.608, blue: 1.0)      // #3d9bff, rain drops and the chance of rain
     static let ink = Color.primary
     static var paper: Color { Color(uiColor: .systemBackground) }
 
@@ -116,16 +117,18 @@ struct WxDots: View {
 
     var body: some View {
         let g = WxIcon.grids[cond] ?? WxIcon.grids["cloud"]!
-        var lit: [DotCell] = [], hot: [DotCell] = [], off: [DotCell] = []
+        var lit: [DotCell] = [], hot: [DotCell] = [], wet: [DotCell] = [], off: [DotCell] = []
         for (y, row) in g.enumerated() {
             for (x, c) in row.enumerated() {
-                if c == "#" { lit.append(DotCell(x: x, y: y)) } else if c == "@" { hot.append(DotCell(x: x, y: y)) } else { off.append(DotCell(x: x, y: y)) }
+                if c == "#" && cond == "rain" && y >= 4 { wet.append(DotCell(x: x, y: y)) }   // the falling drops, in rain blue
+                else if c == "#" { lit.append(DotCell(x: x, y: y)) } else if c == "@" { hot.append(DotCell(x: x, y: y)) } else { off.append(DotCell(x: x, y: y)) }
             }
         }
         return ZStack {
             DotShape(cells: off, columns: 7).fill(Ax.ink.opacity(0.1))
             DotShape(cells: lit, columns: 7).fill(Ax.ink)
             DotShape(cells: hot, columns: 7).fill(Ax.yellow)
+            DotShape(cells: wet, columns: 7).fill(Ax.rain)
         }
         .frame(width: size, height: size)
     }

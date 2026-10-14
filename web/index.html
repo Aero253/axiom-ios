@@ -29,7 +29,7 @@ img{max-width:100%}
   --bg:#ffffff; --grid:rgba(0,0,0,.075); --panel:#ffffff; --raise:#f3f3f3;
   --ink:#000000; --dim:#5c5c5c; --faint:#a6a6a6; --line:#d6d6d6; --unlit:rgba(0,0,0,.085);
   --accent:#000000; --accent-ink:#ffffff; --accent-soft:#f1f1f1; --glow:transparent;
-  --globe-land:#000000; --globe-sea:rgba(0,0,0,.13); --route:#e3120b; --warn:#c98a00;
+  --globe-land:#000000; --globe-sea:rgba(0,0,0,.13); --route:#e3120b; --warn:#c98a00; --rain:#1f6fe0;
   --z:1; --tap:36px;
   --sb:var(--ink); --res:var(--ink); --off:var(--ink); --al:var(--ink); --danger:var(--ink);
   --f-led:"Axiom LED", "Geist Mono", ui-monospace, monospace;
@@ -41,14 +41,14 @@ img{max-width:100%}
   --bg:#000000; --grid:rgba(255,255,255,.085); --panel:#080808; --raise:#121212;
   --ink:#ffffff; --dim:#a3a3a3; --faint:#5e5e5e; --line:#262626; --unlit:rgba(255,255,255,.1);
   --accent:#ffffff; --accent-ink:#000000; --accent-soft:#171717; --glow:rgba(255,255,255,.32);
-  --globe-land:#ffffff; --globe-sea:rgba(255,255,255,.14); --route:#ff4136; --warn:#ffc400;
+  --globe-land:#ffffff; --globe-sea:rgba(255,255,255,.14); --route:#ff4136; --warn:#ffc400; --rain:#4da3ff;
   color-scheme:dark;
 }}
 :root[data-theme="dark"]{
   --bg:#000000; --grid:rgba(255,255,255,.085); --panel:#080808; --raise:#121212;
   --ink:#ffffff; --dim:#a3a3a3; --faint:#5e5e5e; --line:#262626; --unlit:rgba(255,255,255,.1);
   --accent:#ffffff; --accent-ink:#000000; --accent-soft:#171717; --glow:rgba(255,255,255,.32);
-  --globe-land:#ffffff; --globe-sea:rgba(255,255,255,.14); --route:#ff4136; --warn:#ffc400;
+  --globe-land:#ffffff; --globe-sea:rgba(255,255,255,.14); --route:#ff4136; --warn:#ffc400; --rain:#4da3ff;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
@@ -465,13 +465,15 @@ body.editing .wi > .p{outline:1.5px dashed var(--faint); outline-offset:-1.5px}
 .wxnow .t{font:900 52px/.9 var(--f-led); font-variant-numeric:tabular-nums}
 .wxnow .t small{font-size:.45em; color:var(--dim)}
 .dm{display:block; flex:none}
-.dm .on{fill:var(--ink)} .dm .off{fill:var(--unlit)} .dm .hot{fill:var(--ink)}
+.dm .on{fill:var(--ink)} .dm .off{fill:var(--unlit)} .dm .hot{fill:#ffc400}
+.dm .on.dm-drop{fill:var(--rain)}   /* rain falls in rain blue, lightning in caution yellow */
 .days{display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:4px}
 .dcell{display:grid; justify-items:center; gap:4px; padding:7px 2px; border-radius:6px; background:var(--raise); border:1px solid var(--line)}
 .dcell .d{font:600 10px/1 var(--f-mono); letter-spacing:.08em; color:var(--dim)}
 .dcell .hl{font:600 12px/1 var(--f-mono); font-variant-numeric:tabular-nums}
 .dcell .hl span{color:var(--dim)}
 .dcell .pp{font:500 10px/1 var(--f-mono); color:var(--dim)}
+.dcell .pp.wet, .wxwet{color:var(--rain)}
 .stale{font:500 11px/1.35 var(--f-mono); color:var(--dim)}
 
 /* calendar */
@@ -676,7 +678,7 @@ body.m-max .flip > *:nth-child(2){animation-delay:.05s} body.m-max .flip > *:nth
 #pWx{position:relative; overflow:hidden}
 #pWx > *{position:relative; z-index:1}
 body.m-max #pWx[data-rain]::before{content:""; position:absolute; inset:-30px 0 0 0; z-index:0; pointer-events:none; opacity:.55;
-  background-image:radial-gradient(circle, color-mix(in srgb, var(--ink) 40%, transparent) 1.1px, transparent 1.6px), radial-gradient(circle, color-mix(in srgb, var(--ink) 25%, transparent) 1px, transparent 1.5px);
+  background-image:radial-gradient(circle, color-mix(in srgb, var(--rain) 60%, transparent) 1.1px, transparent 1.6px), radial-gradient(circle, color-mix(in srgb, var(--rain) 40%, transparent) 1px, transparent 1.5px);
   background-size:18px 26px, 11px 19px; background-position:0 0, 7px 9px; animation:rainfall .8s linear infinite;
   -webkit-mask-image:linear-gradient(transparent, #000 30%, #000 70%, transparent); mask-image:linear-gradient(transparent, #000 30%, #000 70%, transparent)}
 @keyframes rainfall{to{background-position:-6px 26px, 1px 28px}}
@@ -1643,8 +1645,8 @@ function renderWx() {
     <div class="wxnow">${dotIcon(age < 6 * 3600e3 ? c.current.cond : (today && today.cond) || kindOf(today ? today.p : 0), 64)}
       <div><div class="t">${Math.round(age < 6 * 3600e3 ? c.current.t : today ? today.hi : c.current.t)}<small>°C</small></div>
       <div class="lbl" style="margin-top:6px">${esc(c.name)}${age < 6 * 3600e3 ? ' · ' + esc(c.current.text) : ' · today’s high'}</div></div></div>
-    ${today ? `<div class="mono" style="font-size:12px;color:var(--dim)">H ${Math.round(today.hi)}° · L ${Math.round(today.lo)}° · Rain ${today.p}%${c.current.rh != null && age < 6 * 3600e3 ? ` · RH ${Math.round(c.current.rh)}% · Wind ${Math.round(c.current.wind)} km/h` : ''}</div>` : ''}
-    <div class="days">${days.map(d => { const dd = dOf(d.d); return `<div class="dcell"><span class="d">${d.d === t ? 'TODAY' : DOW[dd.getUTCDay()]}</span>${dotIcon(d.cond || kindOf(d.p), 28)}<span class="hl">${Math.round(d.hi)}° <span>${Math.round(d.lo)}°</span></span><span class="pp">${d.p}%</span></div>`; }).join('')}</div>
+    ${today ? `<div class="mono" style="font-size:12px;color:var(--dim)">H ${Math.round(today.hi)}° · L ${Math.round(today.lo)}° · <span${today.p >= 30 ? ' class="wxwet"' : ''}>Rain ${today.p}%</span>${c.current.rh != null && age < 6 * 3600e3 ? ` · RH ${Math.round(c.current.rh)}% · Wind ${Math.round(c.current.wind)} km/h` : ''}</div>` : ''}
+    <div class="days">${days.map(d => { const dd = dOf(d.d); return `<div class="dcell"><span class="d">${d.d === t ? 'TODAY' : DOW[dd.getUTCDay()]}</span>${dotIcon(d.cond || kindOf(d.p), 28)}<span class="hl">${Math.round(d.hi)}° <span>${Math.round(d.lo)}°</span></span><span class="pp${d.p >= 30 ? ' wet' : ''}">${d.p}%</span></div>`; }).join('')}</div>
     <div class="foot"><span class="stale">${navigator.onLine ? 'Updated' : 'Offline · saved forecast from'} ${when} BKK${age > 36 * 3600e3 ? ` · ${Math.floor(age / 864e5)} day${age >= 2 * 864e5 ? 's' : ''} old` : ''}</span>${navigator.onLine ? `<button class="btn ghost ico" id="wxR" aria-label="Refresh weather" title="Refresh weather">${ic('refresh')}</button>` : ''}</div>`;
 }
 

@@ -145,7 +145,10 @@ struct WeatherView: View {
             Spacer(minLength: 0)
             Text(c.current?.text ?? "").font(Ax.mono(11, .semibold)).lineLimit(1).minimumScaleFactor(0.7)
             if let d = today(c) {
-                Caption(text: "H \(Int(d.hi.rounded()))° L \(Int(d.lo.rounded()))° · rain \(Int(d.p))%")
+                HStack(spacing: 0) {
+                    Caption(text: "H \(Int(d.hi.rounded()))° L \(Int(d.lo.rounded()))° · ")
+                    Caption(text: "rain \(Int(d.p))%", color: d.p >= 30 ? Ax.rain : .secondary)
+                }
             }
         }
     }
@@ -187,7 +190,7 @@ struct WeatherView: View {
                     }
                     Spacer(minLength: 0)
                     if let d = today(c) {
-                        Text("rain \(Int(d.p))%").font(Ax.mono(10)).foregroundStyle(.secondary)
+                        Text("rain \(Int(d.p))%").font(Ax.mono(10)).foregroundStyle(d.p >= 30 ? Ax.rain : .secondary)
                     }
                     Text(temp(c)).font(Ax.mono(20, .bold)).frame(width: 52, alignment: .trailing)
                 }
