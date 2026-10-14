@@ -686,6 +686,8 @@ body.m-max #pWx[data-rain="2"]::after{content:""; position:absolute; inset:0; z-
 @keyframes flash{0%{opacity:0} 61%{opacity:.14} 62%{opacity:0} 64%{opacity:.09} 65%{opacity:0}}
 body.m-max .tkt{font-size:30px}
 body.calm *, body.calm *::before, body.calm *::after{animation:none!important; transition:none!important}
+/* a widget scrolled out of view holds still (sun rays, rain, blinking colons, the ticker…) and carries on when it's back */
+.grid > .w.offscr, .grid > .w.offscr *, .grid > .w.offscr *::before, .grid > .w.offscr *::after{animation-play-state:paused!important}
 </style>
 </head>
 <body class="booting">
@@ -1137,7 +1139,9 @@ const DMF = (() => {
     if (!raf) raf = requestAnimationFrame(flush); // redraw within the same frame the text changed
   }).observe(document.body, { childList: true, subtree: true, characterData: true });
   // shuffle every board value at once (used right after the boot splash)
-  function flipAll() { let i = 0; document.querySelectorAll(FLIP).forEach(el => el.querySelectorAll(':scope .dm').forEach(sp => { const w = (sp.querySelector('.sr') || {}).textContent; if (w && !sp.closest('.big, .tmr')) setTimeout(() => scramble(sp, w.toUpperCase()), Math.min(600, i++ * 6)); })); }
+  function flipAll() { let i = 0; const H = innerHeight;
+    const seen = [...document.querySelectorAll(FLIP)].filter(el => { const r = el.getBoundingClientRect(); return r.bottom > 0 && r.top < H && r.width > 0; });   // one layout read, then the work
+    seen.forEach(el => el.querySelectorAll(':scope .dm').forEach(sp => { const w = (sp.querySelector('.sr') || {}).textContent; if (w && !sp.closest('.big, .tmr')) setTimeout(() => scramble(sp, w.toUpperCase()), Math.min(600, i++ * 6)); })); }
   return { walk, flipAll, glyph: ch => g[ch] };
 })();
 
@@ -1906,13 +1910,23 @@ function drawRoutes() { // decide what the globe highlights
   if (ds[0] && AP[ds[0]] && !G.drag) { G.target = { lon: (AP[ds[0]][1] + AP[base()][1]) / 2, lat: (AP[ds[0]][0] + AP[base()][0]) / 2 }; }
 }
 function cssColors() { const cs = getComputedStyle(document.documentElement); G.colors = { land: cs.getPropertyValue('--globe-land').trim(), sea: cs.getPropertyValue('--globe-sea').trim(), acc: cs.getPropertyValue('--accent').trim(), route: cs.getPropertyValue('--route').trim(), panel: cs.getPropertyValue('--panel').trim(), ink: cs.getPropertyValue('--ink').trim(), dim: cs.getPropertyValue('--dim').trim() }; }
+/* the globe only draws while it's on screen and the app is in front (it sleeps otherwise: no battery spent on a hidden globe),
+   and at about 30 frames a second while it just turns by itself; dragging and pinching get every frame */
+const GV = { on: true, sleep: false, last: 0 };
+function wakeGlobe() { if (GV.sleep && GV.on && !document.hidden) { GV.sleep = false; GV.last = 0; requestAnimationFrame(frame); } }
+new IntersectionObserver(es => { GV.on = es[es.length - 1].isIntersecting; wakeGlobe(); }).observe(cv);
+document.addEventListener('visibilitychange', wakeGlobe);
 function frame(ts) {
+  if (!GV.on || document.hidden) { GV.sleep = true; return; }
   if (!G.w && sizeGlobe() === false) { requestAnimationFrame(frame); return; }
+  const busy = G.drag || pinch || G.target;
+  if (!busy && GV.last && ts - GV.last < 30) { requestAnimationFrame(frame); return; }
+  const k = GV.last ? Math.min(4, (ts - GV.last) / 16.7) : 1; GV.last = ts;   // keep the same turning speed at any frame rate
   if (G.frame++ % 40 === 0 || !G.colors) cssColors();
   const C = G.colors;
   if (!G.drag) {
-    if (G.target) { G.lon += (G.target.lon - G.lon) * .04; G.lat += (G.target.lat - G.lat) * .04; if (Math.abs(G.target.lon - G.lon) < .05) G.target = null; }
-    else if (!calm() && Date.now() > G.idle) G.lon = (G.lon + .06 / G.zoom + 540) % 360 - 180;
+    if (G.target) { const e = 1 - Math.pow(.96, k); G.lon += (G.target.lon - G.lon) * e; G.lat += (G.target.lat - G.lat) * e; if (Math.abs(G.target.lon - G.lon) < .05) G.target = null; }
+    else if (!calm() && Date.now() > G.idle) G.lon = (G.lon + .06 * k / G.zoom + 540) % 360 - 180;
   }
   ctx.setTransform(G.dpr, 0, 0, G.dpr, 0, 0);
   ctx.clearRect(0, 0, G.w, G.h);
@@ -2373,6 +2387,7 @@ function alOpen(a) {
   if (a) { AL.edit = a.id; alDays = a.days.slice(); }
   else { AL.edit = null; alDays = []; }
   $('#alSheet').hidden = false; document.documentElement.style.overflow = 'hidden';
+  alWheelBuild($('#alWH')); alWheelBuild($('#alWM'));
   renderAlarm();
   const d = a ? null : new Date(Date.now() + 60 * 60e3);
   requestAnimationFrame(() => { alPickSet(a ? a.h : d.getHours(), a ? a.m : 0); $('#alFH').focus({ preventScroll: true }); });
@@ -2410,11 +2425,14 @@ $('#alForm').addEventListener('submit', e => {
 });
 /* the time drums: each number list repeats so you can keep flicking round (23 → 00); after it settles it quietly jumps back to the middle copy */
 const ALW = { H: { n: 24, rep: 9 }, M: { n: 60, rep: 5 } };
-function alWheel(el, n, rep) {
+function alWheelBuild(el) { // ~500 rows of dot numbers: only drawn once you open the set-alarm page
+  if (el._built) return; el._built = true;
   let html = '<div class="pd"></div>';
-  for (let r = 0; r < rep; r++) for (let v = 0; v < n; v++) html += `<div class="wi" data-v="${v}"><b>${pad(v)}</b></div>`;
+  for (let r = 0; r < el._rep; r++) for (let v = 0; v < el._n; v++) html += `<div class="wi" data-v="${v}"><b>${pad(v)}</b></div>`;
   el.innerHTML = html + '<div class="pd"></div>';
-  Object.assign(el, { _n: n, _rep: rep, _v: 0, _idx: -1, _tf: new Set() });
+}
+function alWheel(el, n, rep) {
+  Object.assign(el, { _n: n, _rep: rep, _v: 0, _idx: -1, _tf: new Set(), _built: false });
   let t = 0, raf = 0;
   el.addEventListener('scroll', () => {
     if (!raf) raf = requestAnimationFrame(() => { raf = 0; alWheelPaint(el); });
@@ -3207,6 +3225,8 @@ if (nativeH() && useHere(lsGet('here'))) V.wx = 'HERE';   // last known place, u
 renderAll(); setSync(); tick(); setInterval(tick, 1000);
 DMF.walk(document.body);
 requestAnimationFrame(frame);
+{ const io = new IntersectionObserver(es => es.forEach(e => e.target.classList.toggle('offscr', !e.isIntersecting)), { rootMargin: '120px 0px' });
+  document.querySelectorAll('.grid > .w').forEach(w => io.observe(w)); }
 refreshWx(); setInterval(refreshWx, 30 * 60e3); refreshFx(); setInterval(refreshFx, 60 * 60e3);
 // installable + offline when served from a website (e.g. GitHub Pages); opening the file directly needs none of this
 /* ---------- where you are (iPhone app) ----------
