@@ -244,6 +244,44 @@ final class WidgetPreviewTests: XCTestCase {
             SnoozeCard(title: "Alarm", sub: "Mon Wed Fri", fireDate: nil, remaining: 8 * 60 + 41).background(Color.black)
         }
 
+        // report countdown (Live Activity): Lock Screen card and the Dynamic Island, normal and red (last 30 minutes)
+        #if canImport(ActivityKit)
+        if let d = payload.duties.first(where: { $0.type == "FDP" && $0.rep > now.timeIntervalSince1970 * 1000 }) {
+            let st = ReportAttributes.ContentState(duty: d)
+            for (name, red, left) in [("", false, 4782.0), ("-red", true, 1694.0)] {
+                draw("24-report-lock\(name)", CGSize(width: 364, height: 160), accessory: true) {
+                    ReportCard(st: st, red: red, fixed: left).background(Color.black)
+                }
+                draw("25-report-island\(name)", CGSize(width: 371, height: 150), accessory: true) {
+                    ZStack(alignment: .top) {
+                        RoundedRectangle(cornerRadius: 44, style: .continuous).fill(Color.black)
+                        VStack(spacing: 8) {
+                            HStack(alignment: .top) {
+                                ReportIsland.ReportTime(st: st).frame(maxWidth: 120, alignment: .leading)
+                                Spacer(minLength: 0)
+                                ReportIsland.TimeLeft(st: st, red: red, fixed: left).frame(maxWidth: 140)
+                            }
+                            ReportIsland.Route(st: st, red: red)
+                        }
+                        .padding(.horizontal, 20).padding(.vertical, 18)
+                    }
+                    .background(Color(white: 0.2))
+                }
+                draw("26-report-compact\(name)", CGSize(width: 260, height: 37), accessory: true) {
+                    HStack(spacing: 0) {
+                        ReportIsland.CompactLeading(st: st, red: red)
+                        Spacer(minLength: 126)
+                        ReportIsland.CompactTrailing(st: st, red: red, fixed: left)
+                    }
+                    .padding(.horizontal, 12)
+                    .frame(width: 260, height: 37)
+                    .background(Capsule().fill(Color.black))
+                    .background(Color(white: 0.2))
+                }
+            }
+        }
+        #endif
+
         // before Axiom has ever been opened
         let empty = PayloadEntry(date: now, payload: nil)
         draw("99-not-connected", small) { NextDutyView(forcedFamily: .systemSmall, entry: DutyEntry(date: now, payload: nil)) }

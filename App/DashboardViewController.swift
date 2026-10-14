@@ -82,6 +82,7 @@ final class DashboardViewController: UIViewController, WKScriptMessageHandler, W
         if let alarms = incoming.alarms { syncAlarms(alarms) }
         let saved = incoming
         Task { await Reminders.sync(saved, ask: true) }
+        Task { await ReportLive.sync(saved) }   // the report countdown in the Dynamic Island
     }
 
     // MARK: - Alarm clock: the dashboard's alarms go to iOS, which rings them even with the app closed
@@ -127,6 +128,7 @@ final class DashboardViewController: UIViewController, WKScriptMessageHandler, W
         // alarms allowed or turned off in Settings since last time
         if let a = Shared.load()?.alarms { syncAlarms(a) }
         Task { await Reminders.sync(Shared.load(), ask: false) }   // a new day: fresh water reminders
+        Task { await ReportLive.sync(Shared.load()) }   // within 8 hours of report: start the countdown; after it: take it away
         refreshHere()   // moved on (a layover): the weather follows
     }
 

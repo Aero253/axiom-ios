@@ -8,6 +8,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationC
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         UNUserNotificationCenter.current().delegate = self
+        ReportLive.registerEndTask()   // must be registered before launch finishes
         let w = UIWindow(frame: UIScreen.main.bounds)
         w.rootViewController = DashboardViewController()
         w.backgroundColor = .black

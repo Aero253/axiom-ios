@@ -118,7 +118,8 @@ struct SnoozeCard: View {
                 }
                 .foregroundStyle(Ax.yellow)
                 Text(title).font(Ax.mono(15, .bold)).foregroundStyle(.white).lineLimit(1)
-                if !sub.isEmpty { Text(sub).font(Ax.mono(11)).foregroundStyle(.white.opacity(0.6)).lineLimit(1) }
+                let line = fireDate.map { "Rings again \(TimeFmt.hm($0, TimeZone.current.identifier))" } ?? sub
+                if !line.isEmpty { Text(line).font(Ax.mono(11)).foregroundStyle(.white.opacity(0.6)).lineLimit(1) }
             }
             Spacer(minLength: 4)
             Group {
@@ -142,6 +143,7 @@ struct SnoozeCard: View {
 
 /// Yellow and black diagonal stripes, as on the dashboard's ticker when report time is close.
 struct CautionTape: View {
+    var color: Color = Ax.yellow
     var body: some View {
         Canvas { ctx, size in
             ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Color(white: 0.07)))
@@ -151,7 +153,7 @@ struct CautionTape: View {
                 var p = Path()
                 p.move(to: CGPoint(x: x, y: size.height)); p.addLine(to: CGPoint(x: x + size.height, y: 0))
                 p.addLine(to: CGPoint(x: x + size.height + w, y: 0)); p.addLine(to: CGPoint(x: x + w, y: size.height)); p.closeSubpath()
-                ctx.fill(p, with: .color(Ax.yellow))
+                ctx.fill(p, with: .color(color))
                 x += w * 2
             }
         }
@@ -186,7 +188,14 @@ struct AlarmLiveActivity: Widget {
                     Self.countdown(context.state).font(.axiomDots(22)).foregroundStyle(Ax.yellow)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    Text(context.attributes.metadata?.title ?? "Alarm").font(Ax.mono(13)).lineLimit(1)
+                    HStack {
+                        Text(context.attributes.metadata?.title ?? "Alarm").font(Ax.mono(13)).lineLimit(1)
+                        Spacer(minLength: 8)
+                        if let f = Self.fireDate(context.state) {
+                            Text("Rings again \(TimeFmt.hm(f, TimeZone.current.identifier))").font(Ax.mono(11)).foregroundStyle(.white.opacity(0.6)).lineLimit(1)
+                        }
+                    }
+                    .padding(.horizontal, 4)
                 }
             } compactLeading: {
                 Image(systemName: "alarm.fill").foregroundStyle(Ax.yellow)

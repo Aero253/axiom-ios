@@ -41,5 +41,8 @@ struct AlarmWidgets: WidgetBundle {
             AlarmLiveActivity()
         }
         #endif
+        #if canImport(ActivityKit)
+        ReportLiveActivity()
+        #endif
     }
 }
