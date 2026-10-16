@@ -128,7 +128,7 @@ final class DashboardViewController: UIViewController, WKScriptMessageHandler, W
         // alarms allowed or turned off in Settings since last time
         if let a = Shared.load()?.alarms { syncAlarms(a) }
         Task { await Reminders.sync(Shared.load(), ask: false) }   // a new day: fresh water reminders
-        Task { await ReportLive.sync(Shared.load()) }   // within 8 hours of report: start the countdown; after it: take it away
+        Task { await ReportLive.sync(Shared.load()) }   // in the last 2 hours before report: start the countdown; after it: take it away
         refreshHere()   // moved on (a layover): the weather follows
     }
 
