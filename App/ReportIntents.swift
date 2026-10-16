@@ -8,18 +8,18 @@ import AlarmKit
 /// (Siri, the Shortcuts app, or a Shortcuts automation such as "when I leave home").
 struct StartReportCountdownIntent: LiveActivityIntent {
     static var title: LocalizedStringResource = "Start report countdown"
-    static var description = IntentDescription("Shows the countdown to your next report in the Dynamic Island and on the Lock Screen, within 8 hours of report.")
+    static var description = IntentDescription("Shows the countdown to your next report in the Dynamic Island and on the Lock Screen, in the last 2 hours before report.")
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let p = Shared.load()
         await ReportLive.sync(p)
-        guard let d = ReportLive.next(p) else { return .result(dialog: "No report in the next 8 hours.") }
+        guard let d = ReportLive.next(p) else { return .result(dialog: "No report in the next 2 hours.") }
         return .result(dialog: IntentDialog(stringLiteral: "Counting down to report at \(Speak.time(d.repDate))."))
     }
 }
 
 #if canImport(AlarmKit)
-/// The Stop button on an Axiom alarm: stops it, then starts the report countdown if a duty reports within 8 hours,
+/// The Stop button on an Axiom alarm: stops it, then starts the report countdown if a duty reports within 2 hours,
 /// so waking up to your alarm puts the countdown on screen even if you never open Axiom.
 @available(iOS 26.0, *)
 struct StopAlarmIntent: LiveActivityIntent {

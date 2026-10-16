@@ -5,8 +5,8 @@ import BackgroundTasks
 /// Starts, updates and ends the report countdown. Live Activities can only start while Axiom is open,
 /// so this runs whenever the dashboard saves and whenever the app comes to the front.
 enum ReportLive {
-    /// iOS keeps a Live Activity in the Dynamic Island for 8 hours at most, so it starts within 8 hours of report.
-    static let window: TimeInterval = 8 * 3600
+    /// The countdown shows for the last 2 hours before report (your choice; iOS would allow up to 8).
+    static let window: TimeInterval = 2 * 3600
     static let endTask = "com.aero253.axiom.report-end"
 
     static func key(_ d: Duty) -> String { "\(Int(d.rep))" }
