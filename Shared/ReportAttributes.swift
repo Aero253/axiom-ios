@@ -17,8 +17,8 @@ struct ReportAttributes: ActivityAttributes {
 }
 
 extension ReportAttributes.ContentState {
-    /// Red, like the LED ticker, for the last 20 minutes before report.
-    static let redBefore: TimeInterval = 20 * 60
+    /// Red, like the LED ticker, from this long before report.
+    static let redBefore: TimeInterval = 30 * 60
     var redAt: Date { report.addingTimeInterval(-Self.redBefore) }
     func isRed(at now: Date = Date()) -> Bool { now >= redAt }
 
