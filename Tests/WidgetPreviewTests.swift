@@ -244,11 +244,11 @@ final class WidgetPreviewTests: XCTestCase {
             SnoozeCard(title: "Alarm", sub: "Mon Wed Fri", fireDate: nil, remaining: 8 * 60 + 41).background(Color.black)
         }
 
-        // report countdown (Live Activity): Lock Screen card and the Dynamic Island, normal and red (last 30 minutes)
+        // report countdown (Live Activity): Lock Screen card and the Dynamic Island, normal and red (last 20 minutes)
         #if canImport(ActivityKit)
         if let d = payload.duties.first(where: { $0.type == "FDP" && $0.rep > now.timeIntervalSince1970 * 1000 }) {
             let st = ReportAttributes.ContentState(duty: d)
-            for (name, red, left) in [("", false, 4782.0), ("-red", true, 1694.0)] {
+            for (name, red, left) in [("", false, 4782.0), ("-red", true, 1094.0)] {
                 draw("24-report-lock\(name)", CGSize(width: 364, height: 160), accessory: true) {
                     ReportCard(st: st, red: red, fixed: left).background(Color.black)
                 }

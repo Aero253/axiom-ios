@@ -4,7 +4,7 @@ import WidgetKit
 import ActivityKit
 
 // MARK: - Report countdown: Dynamic Island and Lock Screen
-// Yellow countdown while there's time; red with caution tape for the last 30 minutes, like the dashboard's LED ticker.
+// Yellow countdown while there's time; red with caution tape for the last 20 minutes, like the dashboard's LED ticker.
 // iOS draws the island's and the card's shape; these views only fill them, inside the standard margins.
 
 struct ReportLiveActivity: Widget {
@@ -196,7 +196,7 @@ enum ReportIsland {
         let red: Bool
         var body: some View {
             VStack(spacing: 10) {
-                // caution tape like the Lock Screen card: yellow while there's time, red for the last 30 minutes
+                // caution tape like the Lock Screen card: yellow while there's time, red for the last 20 minutes
                 IslandTape(color: red ? Ax.red : Ax.yellow)
                 HStack(spacing: 8) {
                     if red { GoPill(text: "GO", size: 11) }
