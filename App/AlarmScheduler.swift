@@ -103,7 +103,7 @@ final class AlarmScheduler {
         let at: String = item.at.map { String(Int64($0)) } ?? ""
         let h: String = item.h.map { String($0) } ?? ""
         let m: String = item.m.map { String($0) } ?? ""
-        let parts: [String] = [item.key, at, h, m, days, item.title, item.sub ?? "", String(snooze), item.snd ?? ""]
+        let parts: [String] = [item.key, at, h, m, days, item.title, item.sub ?? "", String(snooze), item.snd ?? "", "stop2"]   // "stop2": alarms made before Stop also started the report countdown get re-made once
         let sig = parts.joined(separator: "|")
         var b = Array(SHA256.hash(data: Data(sig.utf8)).prefix(16))
         b[6] = (b[6] & 0x0F) | 0x50     // a name-based UUID
@@ -143,7 +143,7 @@ final class AlarmScheduler {
         for (id, item) in want where !haveIDs.contains(id) {
             guard let schedule = Self.schedule(for: item) else { continue }
             do {
-                _ = try await manager.schedule(id: id, configuration: Self.configuration(for: item, schedule: schedule, snooze: set.snooze))
+                _ = try await manager.schedule(id: id, configuration: Self.configuration(for: item, id: id, schedule: schedule, snooze: set.snooze))
             } catch {
                 lastError = String(describing: error)
             }
@@ -162,7 +162,7 @@ final class AlarmScheduler {
     }
 
     @available(iOS 26.0, *)
-    nonisolated static func configuration(for item: AlarmItem, schedule: Alarm.Schedule, snooze: Int) -> AlarmManager.AlarmConfiguration<AxiomAlarmMeta> {
+    nonisolated static func configuration(for item: AlarmItem, id: UUID, schedule: Alarm.Schedule, snooze: Int) -> AlarmManager.AlarmConfiguration<AxiomAlarmMeta> {
         // the iPhone draws this screen; Axiom picks its words, buttons and the ticker alert's caution yellow
         let alert = AlarmPresentation.Alert(
             title: LocalizedStringResource(stringLiteral: item.title),
@@ -178,6 +178,7 @@ final class AlarmScheduler {
             countdownDuration: Alarm.CountdownDuration(preAlert: nil, postAlert: TimeInterval(max(1, snooze) * 60)),
             schedule: schedule,
             attributes: attributes,
+            stopIntent: StopAlarmIntent(alarmID: id.uuidString),   // Stop also starts the report countdown when a duty is near
             sound: item.soundFile.map { .named($0) } ?? .default)
     }
     #endif

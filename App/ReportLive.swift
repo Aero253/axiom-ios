@@ -20,11 +20,28 @@ enum ReportLive {
             .min { $0.rep < $1.rep }
     }
 
+    /// Still on screen: counting down, or past the red moment (iOS marks it "stale" then, which is how it turns red).
+    static func alive(_ a: Activity<ReportAttributes>) -> Bool { a.activityState == .active || a.activityState == .stale }
+
+    @MainActor private static var running = false
+    @MainActor private static var again = false
+
+    /// One at a time: the app coming to the front and the dashboard saving often happen together, and two overlapping
+    /// runs could start the countdown twice or end the one just started. A call made during a run makes it run once more.
     @MainActor
     static func sync(_ p: Payload?, now: Date = Date()) async {
+        if running { again = true; return }
+        running = true
+        await apply(p, now: now)
+        while again { again = false; await apply(Shared.load() ?? p, now: Date()) }
+        running = false
+    }
+
+    @MainActor
+    private static func apply(_ p: Payload?, now: Date) async {
         let want = next(p, now: now)
         for a in Activity<ReportAttributes>.activities {
-            if let d = want, a.attributes.key == key(d), a.activityState == .active {
+            if let d = want, a.attributes.key == key(d), alive(a) {
                 let st = ReportAttributes.ContentState(duty: d)
                 if a.content.state != st { await a.update(ActivityContent(state: st, staleDate: st.redAt)) }
             } else {
@@ -32,7 +49,7 @@ enum ReportLive {
             }
         }
         guard let d = want, ActivityAuthorizationInfo().areActivitiesEnabled,
-              !Activity<ReportAttributes>.activities.contains(where: { $0.attributes.key == key(d) && $0.activityState == .active }) else { return }
+              !Activity<ReportAttributes>.activities.contains(where: { $0.attributes.key == key(d) && alive($0) }) else { return }
         let st = ReportAttributes.ContentState(duty: d)
         do {
             _ = try Activity.request(attributes: ReportAttributes(key: key(d)),

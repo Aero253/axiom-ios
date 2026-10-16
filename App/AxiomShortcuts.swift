@@ -20,6 +20,11 @@ struct AxiomShortcuts: AppShortcutsProvider {
             "When is my alarm in \(.applicationName)",
             "\(.applicationName) next alarm",
         ], shortTitle: "Next alarm", systemImageName: "alarm")
+        AppShortcut(intent: StartReportCountdownIntent(), phrases: [
+            "Start my report countdown in \(.applicationName)",
+            "Report countdown in \(.applicationName)",
+            "\(.applicationName) countdown",
+        ], shortTitle: "Report countdown", systemImageName: "timer")
         AppShortcut(intent: AddGlassIntent(), phrases: [
             "Add a glass of water in \(.applicationName)",
             "Log water in \(.applicationName)",
