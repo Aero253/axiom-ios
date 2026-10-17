@@ -40,7 +40,8 @@ struct WxProvider: TimelineProvider {
             let next = Date().addingTimeInterval(45 * 60)
             // the cities set in Axiom (newest list from the dashboard), with where you are now in front
             var cities = (payload?.wx?.cities ?? saved?.cities ?? []).filter { $0.code != "HERE" }
-            var here = await Here.refresh(timeout: 6)
+            // where you are: a fix the phone already has, without waiting long (a slow widget gets no update at all)
+            var here = await Here.refresh(timeout: 2)
             if let h = here, Date().timeIntervalSince1970 * 1000 - h.at > 24 * 3600e3 { here = nil }   // a day-old place is no use
             if let h = here { cities.insert(h.city, at: 0) }
             guard !cities.isEmpty else {
@@ -69,7 +70,7 @@ struct WxProvider: TimelineProvider {
         ]
         guard let url = c.url else { done(nil); return }
         var req = URLRequest(url: url)
-        req.timeoutInterval = 12
+        req.timeoutInterval = 8
         URLSession.shared.dataTask(with: req) { data, _, _ in
             guard let data = data, let json = try? JSONSerialization.jsonObject(with: data) else { done(nil); return }
             let arr: [[String: Any]] = (json as? [[String: Any]]) ?? ((json as? [String: Any]).map { [$0] } ?? [])
@@ -116,8 +117,11 @@ struct WeatherView: View {
         }
     }
 
+    /// The reading from the last few hours; an old one would show weather that's long gone.
+    private func now(_ c: WxCity) -> WxNow? { entry.wx?.fresh(at: entry.date) == true ? c.current : nil }
+
     private func temp(_ c: WxCity) -> String {
-        guard let t = c.current?.t ?? today(c)?.hi else { return "—" }
+        guard let t = now(c)?.t ?? today(c)?.hi else { return "—" }
         return "\(Int(t.rounded()))°"
     }
 
@@ -139,11 +143,11 @@ struct WeatherView: View {
             }
             Spacer(minLength: 0)
             HStack(alignment: .center, spacing: 8) {
-                WxDots(cond: c.current?.cond ?? today(c)?.cond ?? "cloud", size: 40)
+                WxDots(cond: now(c)?.cond ?? today(c)?.cond ?? "cloud", size: 40)
                 DotText(text: temp(c), height: 26)
             }
             Spacer(minLength: 0)
-            Text(c.current?.text ?? "").font(Ax.mono(11, .semibold)).lineLimit(1).minimumScaleFactor(0.7)
+            Text(now(c)?.text ?? (today(c) == nil ? "" : "Today's high")).font(Ax.mono(11, .semibold)).lineLimit(1).minimumScaleFactor(0.7)
             if let d = today(c) {
                 HStack(spacing: 0) {
                     Caption(text: "H \(Int(d.hi.rounded()))° L \(Int(d.lo.rounded()))° · ")
@@ -178,7 +182,7 @@ struct WeatherView: View {
             }
             ForEach(wx.cities.prefix(6), id: \.self) { c in
                 HStack(spacing: 10) {
-                    WxDots(cond: c.current?.cond ?? today(c)?.cond ?? "cloud", size: 26)
+                    WxDots(cond: now(c)?.cond ?? today(c)?.cond ?? "cloud", size: 26)
                     VStack(alignment: .leading, spacing: 0) {
                         if c.code == "HERE" {   // where you are: the town's name, with a pin
                             Text(c.name).font(Ax.mono(13, .bold)).lineLimit(1).minimumScaleFactor(0.7)

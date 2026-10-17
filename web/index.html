@@ -1519,7 +1519,12 @@ function renderDay() {
 }
 
 /* ---------- weather ---------- */
-let WX = lsGet('weather') || {"updatedAt":"2026-10-05T12:59:00+07:00","cities":[{"code":"DMK","name":"Bangkok","current":{"t":33.5,"cond":"storm","text":"Light thunderstorms and rain"},"daily":[{"d":"2026-10-05","hi":33.5,"lo":25.2,"p":60},{"d":"2026-10-06","hi":31.2,"lo":25.0,"p":30},{"d":"2026-10-07","hi":32.5,"lo":24.8,"p":15},{"d":"2026-10-08","hi":33.1,"lo":24.8,"p":15},{"d":"2026-10-09","hi":33.1,"lo":25.4,"p":15},{"d":"2026-10-10","hi":31.6,"lo":25.5,"p":65},{"d":"2026-10-11","hi":30.5,"lo":25.2,"p":55}]},{"code":"CNX","name":"Chiang Mai","current":{"t":30.0,"cond":"partly","text":"Partly sunny"},"daily":[{"d":"2026-10-05","hi":30.2,"lo":22.9,"p":55},{"d":"2026-10-06","hi":29.0,"lo":22.7,"p":30},{"d":"2026-10-07","hi":30.2,"lo":21.7,"p":25},{"d":"2026-10-08","hi":32.1,"lo":21.5,"p":15},{"d":"2026-10-09","hi":32.3,"lo":21.9,"p":10},{"d":"2026-10-10","hi":30.7,"lo":22.8,"p":65},{"d":"2026-10-11","hi":30.3,"lo":22.8,"p":45}]},{"code":"HKT","name":"Phuket","current":{"t":31.4,"cond":"storm","text":"Light thunderstorms and rain"},"daily":[{"d":"2026-10-05","hi":31.6,"lo":25.7,"p":55},{"d":"2026-10-06","hi":30.9,"lo":25.6,"p":30},{"d":"2026-10-07","hi":30.7,"lo":25.3,"p":35},{"d":"2026-10-08","hi":30.5,"lo":25.2,"p":30},{"d":"2026-10-09","hi":31.1,"lo":25.3,"p":55},{"d":"2026-10-10","hi":31.6,"lo":25.6,"p":50},{"d":"2026-10-11","hi":31.3,"lo":25.6,"p":65}]},{"code":"HDY","name":"Hat Yai","current":{"t":32.0,"cond":"rain","text":"Light rain"},"daily":[{"d":"2026-10-05","hi":32.0,"lo":24.6,"p":60},{"d":"2026-10-06","hi":31.0,"lo":24.0,"p":75},{"d":"2026-10-07","hi":32.1,"lo":24.3,"p":75},{"d":"2026-10-08","hi":30.5,"lo":24.1,"p":75},{"d":"2026-10-09","hi":31.7,"lo":24.3,"p":75},{"d":"2026-10-10","hi":32.0,"lo":24.5,"p":75},{"d":"2026-10-11","hi":32.1,"lo":24.4,"p":75}]}]};
+let WX = lsGet('weather') || null;   // only real forecasts: nothing until the first fetch
+/* a saved forecast counts only for the place it was fetched for (HERE moves with you) */
+const wxFor = code => { const x = WX && WX.cities && WX.cities.find(y => y.code === code), a = AP[code];
+  return x && a && (x.lat == null ? code !== 'HERE' : Math.abs(x.lat - a[0]) < .05 && Math.abs(x.lon - a[1]) < .05) ? x : null; };
+const wxAge = () => WX ? Date.now() - Date.parse(WX.updatedAt) : Infinity;
+const WX_NOW = 3 * 3600e3;   // "now" readings older than this are shown as today's high instead
 const WMO = c => c <= 1 ? ['sun', c ? 'Mainly clear' : 'Clear'] : c === 2 ? ['partly', 'Partly cloudy'] : c === 3 ? ['cloud', 'Overcast'] : c <= 48 ? ['cloud', 'Fog'] :
   c <= 57 ? ['rain', 'Drizzle'] : c <= 67 ? ['rain', c >= 65 ? 'Heavy rain' : 'Rain'] : c <= 77 ? ['cloud', 'Snow'] : c <= 82 ? ['rain', c === 82 ? 'Violent showers' : 'Rain showers'] : c <= 86 ? ['cloud', 'Snow showers'] : ['storm', 'Thunderstorm'];
 /* sun + weather city lists: base and roster cities come in by themselves; you can add, change or hide any of them */
@@ -1582,12 +1587,13 @@ document.querySelectorAll('[data-ped]').forEach(el => {
   });
   el.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); if (st.row) { st.row = null; renderPlaces(k); } else { st.edit = false; renderPlaces(k); PEL[k][3](); $(PEL[k][1]).focus(); } } });
 });
-let wxBusy = false;
+let wxBusy = false, wxAgain = false;
 async function refreshWx(force) {
-  if (wxBusy || !navigator.onLine) return;
+  if (!navigator.onLine) return;
+  if (wxBusy) { if (force) wxAgain = true; return; }   // a newer place came in mid-fetch: fetch again right after
   const codes = wxCodes();
-  const same = WX && WX.cities && codes.every(c => WX.cities.some(x => x.code === c));
-  if (!force && same && Date.now() - Date.parse(WX.updatedAt) < 45 * 60e3) return;
+  const same = codes.every(c => wxFor(c));
+  if (!force && same && wxAge() < 15 * 60e3) return;
   wxBusy = true;
   try {
     const q = new URLSearchParams({
@@ -1601,13 +1607,14 @@ async function refreshWx(force) {
     let j = await r.json(); if (!Array.isArray(j)) j = [j];
     WX = { updatedAt: new Date().toISOString(), live: true, cities: j.map((x, i) => {
       const [cond, text] = WMO(x.current.weather_code);
-      return { code: codes[i], name: AP[codes[i]][2], current: { t: x.current.temperature_2m, cond, text, rh: x.current.relative_humidity_2m, wind: x.current.wind_speed_10m },
+      return { code: codes[i], name: AP[codes[i]][2], lat: AP[codes[i]][0], lon: AP[codes[i]][1], current: { t: x.current.temperature_2m, cond, text, rh: x.current.relative_humidity_2m, wind: x.current.wind_speed_10m },
         daily: x.daily.time.map((d, k) => ({ d, hi: x.daily.temperature_2m_max[k], lo: x.daily.temperature_2m_min[k], p: x.daily.precipitation_probability_max[k] ?? 0, cond: WMO(x.daily.weather_code[k])[0] })) };
     }) };
     lsSet('weather', WX);
   } catch (e) { console.warn('weather', e); }
-  finally { wxBusy = false; renderWx(); renderPa(); renderTicker(); }
+  finally { wxBusy = false; renderWx(); renderPa(); renderTicker(); pushNative(); if (wxAgain) { wxAgain = false; refreshWx(true); } }
 }
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshWx(); });   // back to the app: fresh weather if it's over 15 min old
 const ICON = {
   sun:    ['#..#..#', '.#...#.', '..###..', '#.###.#', '..###..', '.#...#.', '#..#..#'],
   partly: ['#.#....', '.#.....', '#.#.##.', '...####', '.######', '#######', '.......'],
@@ -1636,20 +1643,20 @@ function renderWx() {
     ? `<button class="tab ico" data-wx="HERE" aria-pressed="${c === V.wx}" aria-label="Your location: ${esc(apName(c))}" title="${esc(apName(c))}">${ic('loc')}</button>`
     : `<button class="tab" data-wx="${esc(c)}" aria-pressed="${c === V.wx}">${esc(c)}</button>`).join('');
   if (!list.length) { $('#wxBody').innerHTML = '<div class="empty">No cities. Tap the pencil to add one.</div>'; return; }
-  const c = WX && WX.cities && WX.cities.find(x => x.code === V.wx);
+  const c = wxFor(V.wx);
   if (!c) { $('#wxBody').innerHTML = `<div class="empty">No forecast for ${V.wx === 'HERE' ? esc(apName(V.wx)) : esc(V.wx) + ' ' + esc(apName(V.wx))} yet. ${navigator.onLine ? 'Loading…' : 'It loads next time you’re online.'}</div>`; return; }
   const t = todayISO();
   const days = (c.daily || []).filter(d => d.d >= t).slice(0, 5);
-  const age = Date.now() - Date.parse(WX.updatedAt);
+  const age = wxAge();
   const upd = new Date(Date.parse(WX.updatedAt) + H7);
   const when = `${pad(upd.getUTCDate())} ${MON[upd.getUTCMonth()]} ${pad(upd.getUTCHours())}:${pad(upd.getUTCMinutes())}`;
   const today = days[0];
-  { const cond = age < 6 * 3600e3 ? c.current.cond : today && today.cond; const wet = cond === 'storm' ? '2' : cond === 'rain' || (today && today.p >= 50) ? '1' : ''; wet ? $('#pWx').dataset.rain = wet : delete $('#pWx').dataset.rain; }
+  { const cond = age < WX_NOW ? c.current.cond : today && today.cond; const wet = cond === 'storm' ? '2' : cond === 'rain' || (today && today.p >= 50) ? '1' : ''; wet ? $('#pWx').dataset.rain = wet : delete $('#pWx').dataset.rain; }
   $('#wxBody').innerHTML = `
-    <div class="wxnow">${dotIcon(age < 6 * 3600e3 ? c.current.cond : (today && today.cond) || kindOf(today ? today.p : 0), 64)}
-      <div><div class="t">${Math.round(age < 6 * 3600e3 ? c.current.t : today ? today.hi : c.current.t)}<small>°C</small></div>
-      <div class="lbl" style="margin-top:6px">${esc(c.name)}${age < 6 * 3600e3 ? ' · ' + esc(c.current.text) : ' · today’s high'}</div></div></div>
-    ${today ? `<div class="mono" style="font-size:12px;color:var(--dim)">H ${Math.round(today.hi)}° · L ${Math.round(today.lo)}° · <span${today.p >= 30 ? ' class="wxwet"' : ''}>Rain ${today.p}%</span>${c.current.rh != null && age < 6 * 3600e3 ? ` · RH ${Math.round(c.current.rh)}% · Wind ${Math.round(c.current.wind)} km/h` : ''}</div>` : ''}
+    <div class="wxnow">${dotIcon(age < WX_NOW ? c.current.cond : (today && today.cond) || kindOf(today ? today.p : 0), 64)}
+      <div><div class="t">${Math.round(age < WX_NOW ? c.current.t : today ? today.hi : c.current.t)}<small>°C</small></div>
+      <div class="lbl" style="margin-top:6px">${esc(c.name)}${age < WX_NOW ? ' · ' + esc(c.current.text) : ' · today’s high'}</div></div></div>
+    ${today ? `<div class="mono" style="font-size:12px;color:var(--dim)">H ${Math.round(today.hi)}° · L ${Math.round(today.lo)}° · <span${today.p >= 30 ? ' class="wxwet"' : ''}>Rain ${today.p}%</span>${c.current.rh != null && age < WX_NOW ? ` · RH ${Math.round(c.current.rh)}% · Wind ${Math.round(c.current.wind)} km/h` : ''}</div>` : ''}
     <div class="days">${days.map(d => { const dd = dOf(d.d); return `<div class="dcell"><span class="d">${d.d === t ? 'TODAY' : DOW[dd.getUTCDay()]}</span>${dotIcon(d.cond || kindOf(d.p), 28)}<span class="hl">${Math.round(d.hi)}° <span>${Math.round(d.lo)}°</span></span><span class="pp${d.p >= 30 ? ' wet' : ''}">${d.p}%</span></div>`; }).join('')}</div>
     <div class="foot"><span class="stale">${navigator.onLine ? 'Updated' : 'Offline · saved forecast from'} ${when} BKK${age > 36 * 3600e3 ? ` · ${Math.floor(age / 864e5)} day${age >= 2 * 864e5 ? 's' : ''} old` : ''}</span>${navigator.onLine ? `<button class="btn ghost ico" id="wxR" aria-label="Refresh weather" title="Refresh weather">${ic('refresh')}</button>` : ''}</div>`;
 }
@@ -2722,7 +2729,7 @@ function renderPa() {
   if (keep && legs[keep]) sel.value = keep;
   const l = legs[+sel.value || 0];
   if (!l) { $('#paOut').textContent = 'No flight on the roster to announce. Import your roster, or pick a flight day on the calendar.'; $('#paFacts').textContent = ''; $('#paFor').textContent = ''; return; }
-  const z = zoned(tzOf(l.to), l.arrMs), wx = WX && WX.cities && WX.cities.find(c => c.code === l.to), wd = wx && (wx.daily || []).find(x => x.d === z.date);
+  const z = zoned(tzOf(l.to), l.arrMs), wx = wxFor(l.to), wd = wx && (wx.daily || []).find(x => x.d === z.date);
   const tc = wd ? Math.round((wd.hi + wd.lo) / 2 + (wd.hi - wd.lo) * .3) : wx ? Math.round(wx.current.t) : null;
   const city = AP[l.to] ? AP[l.to][2] : l.to, from = AP[l.from] ? AP[l.from][2] : l.from;
   const vals = { flight: (l.flt || '').replace(/^SL/, 'SL '), from, to: l.to, city, duration: words(Math.round((l.arrMs - l.depMs) / 60000)), arrival: ampm(z.hm), tempC: tc === null ? '—' : tc, tempF: tc === null ? '—' : Math.round(tc * 9 / 5 + 32) };
@@ -3175,7 +3182,7 @@ function tickerText() {
   const nx = nextDuty();
   if (nx && !al) parts.push(`${nx.type === 'FDP' ? 'Next duty' : TYPES[nx.type]} ${nx.legs && nx.legs[0].flt ? nx.legs[0].flt + ' ' : ''}${nx.legs ? [nx.legs[0].from, ...nx.legs.map(l => l.to)].join(' › ') + ' ' : ''}${longDate(nx.date)} · report ${nx.start}${demo() ? ' (example)' : ''}`);
   const lay = layovers()[0]; if (lay && S.lay[lay.key] && S.lay[lay.key].hotel) parts.push(`Layover ${lay.to} · ${S.lay[lay.key].hotel}${S.lay[lay.key].room ? ' room ' + S.lay[lay.key].room : ''}`);
-  const c = WX && WX.cities && WX.cities[0]; if (c) parts.push(`${c.name} ${Math.round(c.current.t)}° ${c.current.text}`);
+  { const c = wxFor(wxCodes()[0]); if (c && c.current && wxAge() < WX_NOW) parts.push(`${c.name} ${Math.round(c.current.t)}° ${c.current.text}`); }
   S.docs.forEach(d => { const n = Math.round((dOf(d.date) - dOf(t)) / 864e5); if (n <= 90) parts.push(n < 0 ? `${d.name} expired` : `${d.name} expires in ${n} days`); });
   const cd = [...S.count].filter(x => x.date >= t).sort((a, b) => a.date.localeCompare(b.date))[0]; if (cd) { const n = Math.round((dOf(cd.date) - dOf(t)) / 864e5); parts.push(n ? `${cd.title} in ${n} day${n > 1 ? 's' : ''}` : `${cd.title} today`); }
   const td = S.todos.filter(x => !x.done).length; if (td) parts.push(`${td} task${td > 1 ? 's' : ''} to do`);
@@ -3277,7 +3284,7 @@ function widgetPayload() {
   let wake = null;
   if (wd) { const rep = span(wd)[0], leave = rep - w.travel * 60000, alarm = leave - w.ready * 60000; wake = { rep, leave, alarm, bed: alarm - w.sleep * 3600e3, what: wd.type === 'FDP' ? 'Report' : (TYPES[wd.type] || wd.type), flt: wd.legs && wd.legs[0] ? wd.legs[0].flt || null : null }; }
   const sunDays = c => [0, 1, 2].map(i => { const ds = addDays(t, i), rs = AP[c] ? sunRS(ds, AP[c][0], AP[c][1]) : null; return { d: ds, rise: rs ? rs[0] : null, set: rs ? rs[1] : null }; });
-  const wx = WX && WX.cities ? { updatedAt: WX.updatedAt || '', cities: wxCodes().map(c => { const x = WX.cities.find(y => y.code === c);
+  const wx = WX && WX.cities ? { updatedAt: WX.updatedAt || '', cities: wxCodes().map(c => { const x = wxFor(c);
       return { code: c, name: AP[c] ? AP[c][2] : c, lat: AP[c] ? AP[c][0] : 0, lon: AP[c] ? AP[c][1] : 0, tz: TZ[c] || 'Asia/Bangkok',
         current: x && x.current ? { t: x.current.t, cond: x.current.cond || 'cloud', text: x.current.text || '' } : null,
         daily: x && x.daily ? x.daily.filter(q => q.d >= t).slice(0, 6).map(q => ({ d: q.d, hi: q.hi, lo: q.lo, p: q.p || 0, cond: q.cond || 'cloud' })) : [] }; }) } : null;

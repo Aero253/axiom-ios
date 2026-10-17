@@ -131,6 +131,21 @@ struct WxCity: Codable, Hashable {
 struct Weather: Codable {
     var updatedAt: String
     var cities: [WxCity]
+
+    /// When it was fetched (the app writes milliseconds, the widget doesn't).
+    var updated: Date? {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let d = f.date(from: updatedAt) { return d }
+        f.formatOptions = [.withInternetDateTime]
+        return f.date(from: updatedAt)
+    }
+
+    /// The "now" reading is worth showing only for a few hours; after that, today's high.
+    func fresh(at now: Date = Date()) -> Bool {
+        guard let d = updated else { return false }
+        return now.timeIntervalSince(d) < 3 * 3600
+    }
 }
 
 struct ListItem: Codable, Hashable {
@@ -321,9 +336,14 @@ enum Shared {
 
     // MARK: weather the widget fetched itself
 
+    /// The newer of the two forecasts: the one the widget fetched, or the one the app sent last.
     static func loadWeather() -> Weather? {
-        if let url = wxURL, let data = try? Data(contentsOf: url), let w = try? JSONDecoder().decode(Weather.self, from: data) { return w }
-        return load()?.wx
+        var own: Weather? = nil
+        if let url = wxURL, let data = try? Data(contentsOf: url) { own = try? JSONDecoder().decode(Weather.self, from: data) }
+        let app = load()?.wx
+        guard let o = own else { return app }
+        guard let a = app, !a.cities.isEmpty else { return o }
+        return (a.updated ?? .distantPast) > (o.updated ?? .distantPast) ? a : o
     }
 
     static func saveWeather(_ w: Weather) {
