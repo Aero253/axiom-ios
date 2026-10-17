@@ -59,9 +59,21 @@ struct WxProvider: TimelineProvider {
     /// Six forecasts for all the cities in one request, combined; the single best forecast if that fails.
     private func fetch(_ cities: [WxCity], done: @escaping (Weather?) -> Void) {
         let list = Array(cities.prefix(8))
-        WxMix.load(list, combined: true) { out in
-            if let out = out { done(out); return }
-            WxMix.load(list, combined: false, done: done)
+        // six forecasts combined, and the usual single one beside it: its chance of rain (from many runs) and the fallback
+        let g = DispatchGroup(), lock = NSLock()
+        var mix: Weather?, one: Weather?
+        g.enter(); WxMix.load(list, combined: true) { w in lock.lock(); mix = w; lock.unlock(); g.leave() }
+        g.enter(); WxMix.load(list, combined: false) { w in lock.lock(); one = w; lock.unlock(); g.leave() }
+        g.notify(queue: .global()) {
+            guard var m = mix else { done(one); return }
+            if let o = one {
+                for i in m.cities.indices where i < o.cities.count {
+                    for k in m.cities[i].daily.indices {
+                        if let s = o.cities[i].daily.first(where: { $0.d == m.cities[i].daily[k].d }) { m.cities[i].daily[k].p = s.p }
+                    }
+                }
+            }
+            done(m)
         }
     }
 }

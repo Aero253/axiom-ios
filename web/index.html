@@ -1641,18 +1641,17 @@ async function refreshWx(force) {
   try {
     const pos = codes.map(wxPos), base = { latitude: pos.map(p => p[0]).join(','), longitude: pos.map(p => p[1]).join(','), timezone: 'auto', forecast_days: '6' };
     const get = async q => { const r = await fetch('https://api.open-meteo.com/v1/forecast?' + new URLSearchParams({ ...base, ...q })); if (!r.ok) throw new Error(r.status); const j = await r.json(); return Array.isArray(j) ? j : [j]; };
-    let cities;
-    try {   // six forecasts, combined into the most likely one
-      const j = await get({ models: WXM.join(','), current: 'temperature_2m', hourly: 'temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m', past_hours: '1', forecast_hours: '2', daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum' });
-      cities = j.map(wxCombine);
-      if (cities.some(c => !c)) throw new Error('too few forecasts');
-    } catch (e) {   // if that fails: the single best forecast, as before
-      console.warn('weather: combined', e);
-      const j = await get({ current: 'temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m', daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max' });
-      cities = j.map(x => { const [cond, text] = WMO(x.current.weather_code);
-        return { current: { t: x.current.temperature_2m, cond, text, rh: x.current.relative_humidity_2m, wind: x.current.wind_speed_10m },
-          daily: x.daily.time.map((d, k) => ({ d, hi: x.daily.temperature_2m_max[k], lo: x.daily.temperature_2m_min[k], p: x.daily.precipitation_probability_max[k] ?? 0, cond: WMO(x.daily.weather_code[k])[0] })) }; });
-    }
+    // six forecasts combined, and the usual single one beside it: its chance of rain (from many runs) and the fallback
+    const [mix, one] = await Promise.allSettled([
+      get({ models: WXM.join(','), current: 'temperature_2m', hourly: 'temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m', past_hours: '1', forecast_hours: '2', daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum' }),
+      get({ current: 'temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m', daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max' })]);
+    const single = one.status === 'fulfilled' ? one.value.map(x => { const [cond, text] = WMO(x.current.weather_code);
+      return { current: { t: x.current.temperature_2m, cond, text, rh: x.current.relative_humidity_2m, wind: x.current.wind_speed_10m },
+        daily: x.daily.time.map((d, k) => ({ d, hi: x.daily.temperature_2m_max[k], lo: x.daily.temperature_2m_min[k], p: x.daily.precipitation_probability_max[k] ?? 0, cond: WMO(x.daily.weather_code[k])[0] })) }; }) : null;
+    let cities = mix.status === 'fulfilled' ? mix.value.map(wxCombine) : null;
+    if (!cities || cities.some(c => !c)) { if (mix.status === 'rejected') console.warn('weather: combined', mix.reason); cities = single; }
+    else if (single) cities.forEach((c, i) => c.daily.forEach(d => { const s = single[i].daily.find(x => x.d === d.d); if (s && s.p != null) d.p = s.p; }));
+    if (!cities) throw one.reason || new Error('no forecast');
     WX = { updatedAt: new Date().toISOString(), live: true, cities: cities.map((x, i) => ({ code: codes[i], name: AP[codes[i]][2], lat: pos[i][0], lon: pos[i][1], ...x })) };
     lsSet('weather', WX);
   } catch (e) { console.warn('weather', e); }
