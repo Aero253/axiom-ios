@@ -93,13 +93,13 @@ final class WidgetPreviewTests: XCTestCase {
     func testSixForecastsCombine() throws {
         // made-up answers from the six weather centres for one city
         let t = [33.6, 35.1, 33.2, 34.0, 34.3, 31.9], c = [1, 0, 2, 1, 1, 80]
-        var cur: [String: Any] = [:], d: [String: Any] = ["time": ["2026-10-17", "2026-10-18"]]
+        var h: [String: Any] = ["time": ["2026-10-17T16:00", "2026-10-17T17:00", "2026-10-17T18:00"]], d: [String: Any] = ["time": ["2026-10-17", "2026-10-18"]]
         for (i, m) in WxMix.models.enumerated() {
-            cur["temperature_2m_\(m)"] = t[i]; cur["weather_code_\(m)"] = c[i]
+            h["temperature_2m_\(m)"] = [20.0, t[i], 20.0]; h["weather_code_\(m)"] = [95, c[i], 95]
             d["temperature_2m_max_\(m)"] = [35.0 + Double(i) * 0.1, 34.0]; d["temperature_2m_min_\(m)"] = [26.0, 25.0]
             d["precipitation_sum_\(m)"] = [i < 2 ? 3.0 : 0.0, 5.0]; d["weather_code_\(m)"] = [i < 2 ? 80 : 2, 95]
         }
-        let r = try XCTUnwrap(WxMix.mix(["current": cur, "daily": d]))
+        let r = try XCTUnwrap(WxMix.mix(["current": ["time": "2026-10-17T17:15", "temperature_2m": 30.0], "hourly": h, "daily": d]))
         XCTAssertEqual(r.0.t, 33.8, accuracy: 0.01, "the middle of the six")
         XCTAssertEqual(r.0.cond, "sun")
         XCTAssertEqual(r.1.count, 2)
@@ -118,7 +118,7 @@ final class WidgetPreviewTests: XCTestCase {
         URLSession.shared.dataTask(with: url) { data, _, _ in got = data; exp.fulfill() }.resume()
         wait(for: [exp], timeout: 20)
         guard let data = got else { throw XCTSkip("no connection") }
-        print("Open-Meteo six forecasts:", String(data: data.prefix(1500), encoding: .utf8) ?? "")
+        print("Open-Meteo six forecasts:", String(data: data.prefix(700), encoding: .utf8) ?? "", "…hourly:", (String(data: data, encoding: .utf8) ?? "").components(separatedBy: "\"hourly\":").dropFirst().first?.prefix(900) ?? "none")
         let wx = try XCTUnwrap(WxMix.parse(data, [city], combined: true), "could not read the combined answer")
         let c = try XCTUnwrap(wx.cities.first)
         print("Combined now:", c.current as Any, "days:", c.daily)

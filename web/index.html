@@ -1554,7 +1554,11 @@ function vote(codes) {   // the picture most forecasts show (a tie goes to the w
 }
 function wxCombine(x) {
   const per = (o, v) => o ? WXM.map(m => o[v + '_' + m]) : [];
-  const cur = x.current, ts = per(cur, 'temperature_2m'), cc = per(cur, 'weather_code');
+  // "now" from each forecast: its hour closest to the current time
+  const hr = x.hourly, ht = hr && hr.time ? hr.time.map(Date.parse) : [], ref = x.current && x.current.time ? Date.parse(x.current.time) : Date.now();
+  const hi0 = ht.length ? ht.reduce((b, v, i) => Math.abs(v - ref) < Math.abs(ht[b] - ref) ? i : b, 0) : -1;
+  const per0 = v => hi0 < 0 ? [] : WXM.map(m => hr[v + '_' + m] ? hr[v + '_' + m][hi0] : null);
+  const ts = per0('temperature_2m'), cc = per0('weather_code');
   const have = WXM.map((m, i) => ts[i] != null && cc[i] != null ? i : -1).filter(i => i >= 0);
   if (have.length < 2 || !x.daily || !x.daily.time) return null;
   const t = median(have.map(i => ts[i])), [cond, text] = vote(have.map(i => cc[i]));
@@ -1563,7 +1567,7 @@ function wxCombine(x) {
   const at = (arr, k) => arr.map(a => a ? a[k] : null);
   const daily = x.daily.time.map((d, k) => { const ps = at(pr, k).filter(v => v != null), v = vote(at(wc, k));
     return v && median(at(hi, k)) != null ? { d, hi: median(at(hi, k)), lo: median(at(lo, k)), p: ps.length ? Math.round(100 * ps.filter(v => v >= 1).length / ps.length) : 0, cond: v[0] } : null; }).filter(Boolean);
-  return { current: { t, cond, text, rh: median(per(cur, 'relative_humidity_2m')), wind: median(per(cur, 'wind_speed_10m')),
+  return { current: { t, cond, text, rh: median(per0('relative_humidity_2m')), wind: median(per0('wind_speed_10m')),
     n: have.length, agree, lo: Math.min(...have.map(i => ts[i])), hi: Math.max(...have.map(i => ts[i])) }, daily };
 }
 /* sun + weather city lists: base and roster cities come in by themselves; you can add, change or hide any of them */
@@ -1639,7 +1643,7 @@ async function refreshWx(force) {
     const get = async q => { const r = await fetch('https://api.open-meteo.com/v1/forecast?' + new URLSearchParams({ ...base, ...q })); if (!r.ok) throw new Error(r.status); const j = await r.json(); return Array.isArray(j) ? j : [j]; };
     let cities;
     try {   // six forecasts, combined into the most likely one
-      const j = await get({ models: WXM.join(','), current: 'temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m', daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum' });
+      const j = await get({ models: WXM.join(','), current: 'temperature_2m', hourly: 'temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m', past_hours: '1', forecast_hours: '2', daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum' });
       cities = j.map(wxCombine);
       if (cities.some(c => !c)) throw new Error('too few forecasts');
     } catch (e) {   // if that fails: the single best forecast, as before

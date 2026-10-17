@@ -81,6 +81,9 @@ enum WxMix {
         ]
         if combined {
             q.append(URLQueryItem(name: "models", value: models.joined(separator: ",")))
+            q.append(URLQueryItem(name: "hourly", value: "temperature_2m,weather_code"))
+            q.append(URLQueryItem(name: "past_hours", value: "1"))
+            q.append(URLQueryItem(name: "forecast_hours", value: "2"))
             q.append(URLQueryItem(name: "daily", value: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum"))
         } else {
             q.append(URLQueryItem(name: "daily", value: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max"))
@@ -141,9 +144,15 @@ enum WxMix {
     }
 
     static func mix(_ x: [String: Any]) -> (WxNow, [WxDay])? {
-        let cur = x["current"] as? [String: Any] ?? [:]
-        let ts = models.map { num(cur["temperature_2m_\($0)"]) }
-        let cc = models.map { num(cur["weather_code_\($0)"]).map { Int($0) } }
+        // "now" from each forecast: its hour closest to the current time
+        let cur = x["current"] as? [String: Any] ?? [:], hr = x["hourly"] as? [String: Any] ?? [:]
+        let f = DateFormatter(); f.locale = Locale(identifier: "en_US_POSIX"); f.timeZone = TimeZone(identifier: "UTC"); f.dateFormat = "yyyy-MM-dd'T'HH:mm"
+        let times = (hr["time"] as? [String] ?? []).map { f.date(from: $0) }
+        let ref = (cur["time"] as? String).flatMap { f.date(from: $0) } ?? times.compactMap { $0 }.first ?? Date()
+        let k0 = times.indices.min(by: { abs(times[$0]?.timeIntervalSince(ref) ?? .infinity) < abs(times[$1]?.timeIntervalSince(ref) ?? .infinity) })
+        func now(_ v: String) -> [Double?] { models.map { m in guard let k = k0, let a = hr["\(v)_\(m)"] as? [Any], k < a.count else { return nil }; return num(a[k]) } }
+        let ts = now("temperature_2m")
+        let cc = now("weather_code").map { $0.map { Int($0) } }
         let have = models.indices.filter { ts[$0] != nil && cc[$0] != nil }
         guard have.count >= 2, let t = median(have.map { ts[$0] }), let now = vote(have.map { cc[$0] }) else { return nil }
         guard let d = x["daily"] as? [String: Any], let days = d["time"] as? [String] else { return nil }
