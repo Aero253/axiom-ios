@@ -56,46 +56,122 @@ struct WxProvider: TimelineProvider {
         }
     }
 
-    /// One Open-Meteo request for all the cities; keeps the saved forecast if there's no signal.
+    /// Six forecasts for all the cities in one request, combined; the single best forecast if that fails.
     private func fetch(_ cities: [WxCity], done: @escaping (Weather?) -> Void) {
         let list = Array(cities.prefix(8))
+        WxMix.load(list, combined: true) { out in
+            if let out = out { done(out); return }
+            WxMix.load(list, combined: false, done: done)
+        }
+    }
+}
+
+/// Six weather centres' forecasts (Europe, USA, Germany, Japan, France, UK) made into the most likely one.
+enum WxMix {
+    static let models = ["ecmwf_ifs025", "gfs_seamless", "icon_seamless", "jma_seamless", "meteofrance_seamless", "ukmo_seamless"]
+
+    static func url(_ list: [WxCity], combined: Bool) -> URL? {
         var c = URLComponents(string: "https://api.open-meteo.com/v1/forecast")!
-        c.queryItems = [
+        var q = [
             URLQueryItem(name: "latitude", value: list.map { String($0.lat) }.joined(separator: ",")),
             URLQueryItem(name: "longitude", value: list.map { String($0.lon) }.joined(separator: ",")),
             URLQueryItem(name: "current", value: "temperature_2m,weather_code"),
-            URLQueryItem(name: "daily", value: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max"),
             URLQueryItem(name: "timezone", value: "auto"),
             URLQueryItem(name: "forecast_days", value: "6")
         ]
-        guard let url = c.url else { done(nil); return }
+        if combined {
+            q.append(URLQueryItem(name: "models", value: models.joined(separator: ",")))
+            q.append(URLQueryItem(name: "daily", value: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum"))
+        } else {
+            q.append(URLQueryItem(name: "daily", value: "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max"))
+        }
+        c.queryItems = q
+        return c.url
+    }
+
+    static func load(_ list: [WxCity], combined: Bool, done: @escaping (Weather?) -> Void) {
+        guard !list.isEmpty, let url = url(list, combined: combined) else { done(nil); return }
         var req = URLRequest(url: url)
         req.timeoutInterval = 8
-        URLSession.shared.dataTask(with: req) { data, _, _ in
-            guard let data = data, let json = try? JSONSerialization.jsonObject(with: data) else { done(nil); return }
-            let arr: [[String: Any]] = (json as? [[String: Any]]) ?? ((json as? [String: Any]).map { [$0] } ?? [])
-            guard arr.count == list.count else { done(nil); return }
-            var out: [WxCity] = []
-            for (i, x) in arr.enumerated() {
-                var city = list[i]
-                if let cur = x["current"] as? [String: Any], let t = (cur["temperature_2m"] as? NSNumber)?.doubleValue {
-                    let code = (cur["weather_code"] as? NSNumber)?.intValue ?? 3
-                    let m = WMO.map(code)
-                    city.current = WxNow(t: t, cond: m.0, text: m.1)
-                }
-                if let d = x["daily"] as? [String: Any], let days = d["time"] as? [String] {
-                    let hi = d["temperature_2m_max"] as? [Any] ?? [], lo = d["temperature_2m_min"] as? [Any] ?? []
-                    let pp = d["precipitation_probability_max"] as? [Any] ?? [], wc = d["weather_code"] as? [Any] ?? []
-                    city.daily = days.enumerated().map { k, day in
-                        let num: ([Any], Int) -> Double = { a, j in j < a.count ? ((a[j] as? NSNumber)?.doubleValue ?? 0) : 0 }
-                        return WxDay(d: day, hi: num(hi, k), lo: num(lo, k), p: num(pp, k), cond: WMO.map(Int(num(wc, k))).0)
-                    }
-                }
-                out.append(city)
-            }
-            let iso = ISO8601DateFormatter().string(from: Date())
-            done(Weather(updatedAt: iso, cities: out))
+        URLSession.shared.dataTask(with: req) { data, resp, _ in
+            guard let data = data, (resp as? HTTPURLResponse)?.statusCode ?? 200 == 200 else { done(nil); return }
+            done(parse(data, list, combined: combined))
         }.resume()
+    }
+
+    static func parse(_ data: Data, _ list: [WxCity], combined: Bool) -> Weather? {
+        guard let json = try? JSONSerialization.jsonObject(with: data) else { return nil }
+        let arr: [[String: Any]] = (json as? [[String: Any]]) ?? ((json as? [String: Any]).map { [$0] } ?? [])
+        guard arr.count == list.count else { return nil }
+        var out: [WxCity] = []
+        for (i, x) in arr.enumerated() {
+            var city = list[i]
+            if combined {
+                guard let m = mix(x) else { return nil }
+                city.current = m.0; city.daily = m.1
+            } else {
+                single(x, into: &city)
+            }
+            out.append(city)
+        }
+        return Weather(updatedAt: ISO8601DateFormatter().string(from: Date()), cities: out)
+    }
+
+    private static func num(_ v: Any?) -> Double? { (v as? NSNumber)?.doubleValue }
+
+    static func median(_ a: [Double?]) -> Double? {
+        let v = a.compactMap { $0 }.filter { $0.isFinite }.sorted()
+        guard !v.isEmpty else { return nil }
+        return v.count % 2 == 1 ? v[v.count / 2] : (v[v.count / 2 - 1] + v[v.count / 2]) / 2
+    }
+
+    private static let sev = ["sun": 0, "partly": 1, "cloud": 2, "rain": 3, "storm": 4]
+
+    /// The picture most forecasts show (a tie goes to the wetter one), with its most common wording.
+    static func vote(_ codes: [Int?]) -> (String, String)? {
+        let cs = codes.compactMap { $0 }
+        guard !cs.isEmpty else { return nil }
+        var n: [String: Int] = [:]
+        for c in cs { n[WMO.map(c).0, default: 0] += 1 }
+        guard let best = n.keys.sorted(by: { (n[$0]!, sev[$0] ?? 0) > (n[$1]!, sev[$1] ?? 0) }).first else { return nil }
+        var m: [Int: Int] = [:]
+        for c in cs where WMO.map(c).0 == best { m[c, default: 0] += 1 }
+        let code = m.keys.sorted(by: { (m[$0]!, $0) > (m[$1]!, $1) }).first!
+        return WMO.map(code)
+    }
+
+    static func mix(_ x: [String: Any]) -> (WxNow, [WxDay])? {
+        let cur = x["current"] as? [String: Any] ?? [:]
+        let ts = models.map { num(cur["temperature_2m_\($0)"]) }
+        let cc = models.map { num(cur["weather_code_\($0)"]).map { Int($0) } }
+        let have = models.indices.filter { ts[$0] != nil && cc[$0] != nil }
+        guard have.count >= 2, let t = median(have.map { ts[$0] }), let now = vote(have.map { cc[$0] }) else { return nil }
+        guard let d = x["daily"] as? [String: Any], let days = d["time"] as? [String] else { return nil }
+        func per(_ v: String) -> [[Any]] { models.map { d["\(v)_\($0)"] as? [Any] ?? [] } }
+        let hi = per("temperature_2m_max"), lo = per("temperature_2m_min"), pr = per("precipitation_sum"), wc = per("weather_code")
+        func at(_ a: [[Any]], _ k: Int) -> [Double?] { a.map { k < $0.count ? num($0[k]) : nil } }
+        let daily: [WxDay] = days.enumerated().compactMap { k, day in
+            guard let h = median(at(hi, k)), let l = median(at(lo, k)), let v = vote(at(wc, k).map { $0.map { Int($0) } }) else { return nil }
+            let ps = at(pr, k).compactMap { $0 }
+            let p = ps.isEmpty ? 0 : (100 * Double(ps.filter { $0 >= 1 }.count) / Double(ps.count)).rounded()
+            return WxDay(d: day, hi: h, lo: l, p: p, cond: v.0)
+        }
+        return (WxNow(t: t, cond: now.0, text: now.1), daily)
+    }
+
+    static func single(_ x: [String: Any], into city: inout WxCity) {
+        if let cur = x["current"] as? [String: Any], let t = num(cur["temperature_2m"]) {
+            let m = WMO.map(Int(num(cur["weather_code"]) ?? 3))
+            city.current = WxNow(t: t, cond: m.0, text: m.1)
+        }
+        if let d = x["daily"] as? [String: Any], let days = d["time"] as? [String] {
+            let hi = d["temperature_2m_max"] as? [Any] ?? [], lo = d["temperature_2m_min"] as? [Any] ?? []
+            let pp = d["precipitation_probability_max"] as? [Any] ?? [], wc = d["weather_code"] as? [Any] ?? []
+            city.daily = days.enumerated().map { k, day in
+                let n: ([Any], Int) -> Double = { a, j in j < a.count ? (num(a[j]) ?? 0) : 0 }
+                return WxDay(d: day, hi: n(hi, k), lo: n(lo, k), p: n(pp, k), cond: WMO.map(Int(n(wc, k))).0)
+            }
+        }
     }
 }
 

@@ -90,6 +90,42 @@ final class WidgetPreviewTests: XCTestCase {
         draw("16-weather-large-here", large) { WeatherView(forcedFamily: .systemLarge, entry: WxEntry(date: now, wx: wx, demo: false)) }
     }
 
+    func testSixForecastsCombine() throws {
+        // made-up answers from the six weather centres for one city
+        let t = [33.6, 35.1, 33.2, 34.0, 34.3, 31.9], c = [1, 0, 2, 1, 1, 80]
+        var cur: [String: Any] = [:], d: [String: Any] = ["time": ["2026-10-17", "2026-10-18"]]
+        for (i, m) in WxMix.models.enumerated() {
+            cur["temperature_2m_\(m)"] = t[i]; cur["weather_code_\(m)"] = c[i]
+            d["temperature_2m_max_\(m)"] = [35.0 + Double(i) * 0.1, 34.0]; d["temperature_2m_min_\(m)"] = [26.0, 25.0]
+            d["precipitation_sum_\(m)"] = [i < 2 ? 3.0 : 0.0, 5.0]; d["weather_code_\(m)"] = [i < 2 ? 80 : 2, 95]
+        }
+        let r = try XCTUnwrap(WxMix.mix(["current": cur, "daily": d]))
+        XCTAssertEqual(r.0.t, 33.8, accuracy: 0.01, "the middle of the six")
+        XCTAssertEqual(r.0.cond, "sun")
+        XCTAssertEqual(r.1.count, 2)
+        XCTAssertEqual(r.1[0].p, 33, "2 of 6 show rain")
+        XCTAssertEqual(r.1[0].cond, "partly")
+        XCTAssertEqual(r.1[1].p, 100)
+        XCTAssertEqual(r.1[1].cond, "storm")
+    }
+
+    /// The real service, once: checks its answer still has the shape we read. Skipped without a connection.
+    func testSixForecastsLive() throws {
+        let city = WxCity(code: "DMK", name: "Bangkok", lat: 13.75, lon: 100.5, tz: "Asia/Bangkok", current: nil, daily: [])
+        let url = try XCTUnwrap(WxMix.url([city], combined: true))
+        let exp = expectation(description: "open-meteo")
+        var got: Data?
+        URLSession.shared.dataTask(with: url) { data, _, _ in got = data; exp.fulfill() }.resume()
+        wait(for: [exp], timeout: 20)
+        guard let data = got else { throw XCTSkip("no connection") }
+        print("Open-Meteo six forecasts:", String(data: data.prefix(1500), encoding: .utf8) ?? "")
+        let wx = try XCTUnwrap(WxMix.parse(data, [city], combined: true), "could not read the combined answer")
+        let c = try XCTUnwrap(wx.cities.first)
+        print("Combined now:", c.current as Any, "days:", c.daily)
+        XCTAssertNotNil(c.current)
+        XCTAssertGreaterThanOrEqual(c.daily.count, 5)
+    }
+
     func testSiriAnswers() throws {
         let next = Speak.nextReport(payload, now: now)
         print("Siri next report:", next)

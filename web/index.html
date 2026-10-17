@@ -462,6 +462,11 @@ body.editing .wi > .p{outline:1.5px dashed var(--faint); outline-offset:-1.5px}
 .tab{border:1px solid var(--line); background:transparent; border-radius:5px; padding:5px 8px; cursor:pointer; font:600 11px/1 var(--f-mono); letter-spacing:.08em}
 .tab[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
 .wxnow{display:flex; align-items:center; gap:14px}
+.wxagree{display:flex; align-items:center; gap:3px; margin-bottom:2px; font:500 11px/1.2 var(--f-mono); letter-spacing:.06em; text-transform:uppercase; color:var(--dim)}
+.wxagree i{width:6px; height:6px; border-radius:50%; background:var(--line)}
+.wxagree i.on{background:var(--ink)}
+.wxagree span{margin-left:6px}
+.wxagree b{color:var(--ink); font-weight:700}
 .wxnow .t{font:900 52px/.9 var(--f-led); font-variant-numeric:tabular-nums}
 .wxnow .t small{font-size:.45em; color:var(--dim)}
 .dm{display:block; flex:none}
@@ -1521,12 +1526,46 @@ function renderDay() {
 /* ---------- weather ---------- */
 let WX = lsGet('weather') || null;   // only real forecasts: nothing until the first fetch
 /* a saved forecast counts only for the place it was fetched for (HERE moves with you) */
-const wxFor = code => { const x = WX && WX.cities && WX.cities.find(y => y.code === code), a = AP[code];
+const wxFor = code => { const x = WX && WX.cities && WX.cities.find(y => y.code === code), a = wxPos(code);
   return x && a && (x.lat == null ? code !== 'HERE' : Math.abs(x.lat - a[0]) < .05 && Math.abs(x.lon - a[1]) < .05) ? x : null; };
 const wxAge = () => WX ? Date.now() - Date.parse(WX.updatedAt) : Infinity;
 const WX_NOW = 3 * 3600e3;   // "now" readings older than this are shown as today's high instead
 const WMO = c => c <= 1 ? ['sun', c ? 'Mainly clear' : 'Clear'] : c === 2 ? ['partly', 'Partly cloudy'] : c === 3 ? ['cloud', 'Overcast'] : c <= 48 ? ['cloud', 'Fog'] :
   c <= 57 ? ['rain', 'Drizzle'] : c <= 67 ? ['rain', c >= 65 ? 'Heavy rain' : 'Rain'] : c <= 77 ? ['cloud', 'Snow'] : c <= 82 ? ['rain', c === 82 ? 'Violent showers' : 'Rain showers'] : c <= 86 ? ['cloud', 'Snow showers'] : ['storm', 'Thunderstorm'];
+/* the weather is for the city, not the airport: city centres where the airport is out of town */
+const CITYC = { DMK: [13.75, 100.50], BKK: [13.75, 100.50], HKT: [7.89, 98.39], KBV: [8.06, 98.92], CNX: [18.79, 98.99], CEI: [19.91, 99.83], HDY: [7.01, 100.47],
+  URT: [9.14, 99.33], NST: [8.43, 99.96], UTH: [17.41, 102.79], KKC: [16.43, 102.83], UBP: [15.23, 104.86], UTP: [12.68, 101.28], KUL: [3.15, 101.70], CGK: [-6.20, 106.85],
+  HAN: [21.03, 105.85], SGN: [10.78, 106.70], DAD: [16.05, 108.21], CXR: [12.24, 109.19], RGN: [16.80, 96.16], SIN: [1.29, 103.85], PEN: [5.41, 100.33], DPS: [-8.65, 115.22],
+  HKG: [22.30, 114.17], MFM: [22.19, 113.54], TPE: [25.04, 121.56], ICN: [37.57, 126.98], GMP: [37.57, 126.98], NRT: [35.68, 139.69], HND: [35.68, 139.69], KIX: [34.69, 135.50],
+  ITM: [34.69, 135.50], NGO: [35.18, 136.91], CTS: [43.06, 141.35], PVG: [31.23, 121.47], SHA: [31.23, 121.47], PEK: [39.90, 116.40], PKX: [39.90, 116.40], CAN: [23.13, 113.26],
+  KMG: [25.04, 102.71], CTU: [30.66, 104.06], TFU: [30.66, 104.06], CKG: [29.56, 106.55], CSX: [28.23, 112.94], NNG: [22.82, 108.32], BLR: [12.97, 77.59], DEL: [28.61, 77.21],
+  BOM: [19.08, 72.88], MAA: [13.08, 80.27], CCU: [22.57, 88.36] };
+const wxPos = c => (c !== 'HERE' && CITYC[c]) || AP[c];
+/* six forecasts from six weather centres (Europe, USA, Germany, Japan, France, UK), combined */
+const WXM = ['ecmwf_ifs025', 'gfs_seamless', 'icon_seamless', 'jma_seamless', 'meteofrance_seamless', 'ukmo_seamless'];
+const median = a => { const v = a.filter(x => x != null && isFinite(x)).sort((p, q) => p - q), n = v.length; return n ? (n % 2 ? v[n >> 1] : (v[n / 2 - 1] + v[n / 2]) / 2) : null; };
+const WET = c => c === 'rain' || c === 'storm', SEV = { sun: 0, partly: 1, cloud: 2, rain: 3, storm: 4 };
+function vote(codes) {   // the picture most forecasts show (a tie goes to the wetter one); its most common wording
+  const cs = codes.filter(c => c != null), n = {}; cs.forEach(c => { const k = WMO(c)[0]; n[k] = (n[k] || 0) + 1; });
+  const best = Object.keys(n).sort((a, b) => n[b] - n[a] || SEV[b] - SEV[a])[0];
+  if (!best) return null;
+  const m = {}; cs.filter(c => WMO(c)[0] === best).forEach(c => m[c] = (m[c] || 0) + 1);
+  return WMO(+Object.keys(m).sort((a, b) => m[b] - m[a] || b - a)[0]);
+}
+function wxCombine(x) {
+  const per = (o, v) => o ? WXM.map(m => o[v + '_' + m]) : [];
+  const cur = x.current, ts = per(cur, 'temperature_2m'), cc = per(cur, 'weather_code');
+  const have = WXM.map((m, i) => ts[i] != null && cc[i] != null ? i : -1).filter(i => i >= 0);
+  if (have.length < 2 || !x.daily || !x.daily.time) return null;
+  const t = median(have.map(i => ts[i])), [cond, text] = vote(have.map(i => cc[i]));
+  const agree = have.filter(i => WET(WMO(cc[i])[0]) === WET(cond) && Math.abs(ts[i] - t) <= 1.5).length;
+  const hi = per(x.daily, 'temperature_2m_max'), lo = per(x.daily, 'temperature_2m_min'), pr = per(x.daily, 'precipitation_sum'), wc = per(x.daily, 'weather_code');
+  const at = (arr, k) => arr.map(a => a ? a[k] : null);
+  const daily = x.daily.time.map((d, k) => { const ps = at(pr, k).filter(v => v != null), v = vote(at(wc, k));
+    return v && median(at(hi, k)) != null ? { d, hi: median(at(hi, k)), lo: median(at(lo, k)), p: ps.length ? Math.round(100 * ps.filter(v => v >= 1).length / ps.length) : 0, cond: v[0] } : null; }).filter(Boolean);
+  return { current: { t, cond, text, rh: median(per(cur, 'relative_humidity_2m')), wind: median(per(cur, 'wind_speed_10m')),
+    n: have.length, agree, lo: Math.min(...have.map(i => ts[i])), hi: Math.max(...have.map(i => ts[i])) }, daily };
+}
 /* sun + weather city lists: base and roster cities come in by themselves; you can add, change or hide any of them */
 function rosterCities() { const t = todayISO(), end = addDays(t, 7), out = [base()];
   duties().filter(d => d.date >= t && d.date <= end && d.legs).forEach(d => d.legs.forEach(l => { if (!out.includes(l.to) && AP[l.to]) out.push(l.to); }));
@@ -1596,20 +1635,21 @@ async function refreshWx(force) {
   if (!force && same && wxAge() < 15 * 60e3) return;
   wxBusy = true;
   try {
-    const q = new URLSearchParams({
-      latitude: codes.map(c => AP[c][0]).join(','), longitude: codes.map(c => AP[c][1]).join(','),
-      current: 'temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m',
-      daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max',
-      timezone: 'auto', forecast_days: '7'
-    });
-    const r = await fetch('https://api.open-meteo.com/v1/forecast?' + q);
-    if (!r.ok) throw new Error(r.status);
-    let j = await r.json(); if (!Array.isArray(j)) j = [j];
-    WX = { updatedAt: new Date().toISOString(), live: true, cities: j.map((x, i) => {
-      const [cond, text] = WMO(x.current.weather_code);
-      return { code: codes[i], name: AP[codes[i]][2], lat: AP[codes[i]][0], lon: AP[codes[i]][1], current: { t: x.current.temperature_2m, cond, text, rh: x.current.relative_humidity_2m, wind: x.current.wind_speed_10m },
-        daily: x.daily.time.map((d, k) => ({ d, hi: x.daily.temperature_2m_max[k], lo: x.daily.temperature_2m_min[k], p: x.daily.precipitation_probability_max[k] ?? 0, cond: WMO(x.daily.weather_code[k])[0] })) };
-    }) };
+    const pos = codes.map(wxPos), base = { latitude: pos.map(p => p[0]).join(','), longitude: pos.map(p => p[1]).join(','), timezone: 'auto', forecast_days: '6' };
+    const get = async q => { const r = await fetch('https://api.open-meteo.com/v1/forecast?' + new URLSearchParams({ ...base, ...q })); if (!r.ok) throw new Error(r.status); const j = await r.json(); return Array.isArray(j) ? j : [j]; };
+    let cities;
+    try {   // six forecasts, combined into the most likely one
+      const j = await get({ models: WXM.join(','), current: 'temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m', daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum' });
+      cities = j.map(wxCombine);
+      if (cities.some(c => !c)) throw new Error('too few forecasts');
+    } catch (e) {   // if that fails: the single best forecast, as before
+      console.warn('weather: combined', e);
+      const j = await get({ current: 'temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m', daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max' });
+      cities = j.map(x => { const [cond, text] = WMO(x.current.weather_code);
+        return { current: { t: x.current.temperature_2m, cond, text, rh: x.current.relative_humidity_2m, wind: x.current.wind_speed_10m },
+          daily: x.daily.time.map((d, k) => ({ d, hi: x.daily.temperature_2m_max[k], lo: x.daily.temperature_2m_min[k], p: x.daily.precipitation_probability_max[k] ?? 0, cond: WMO(x.daily.weather_code[k])[0] })) }; });
+    }
+    WX = { updatedAt: new Date().toISOString(), live: true, cities: cities.map((x, i) => ({ code: codes[i], name: AP[codes[i]][2], lat: pos[i][0], lon: pos[i][1], ...x })) };
     lsSet('weather', WX);
   } catch (e) { console.warn('weather', e); }
   finally { wxBusy = false; renderWx(); renderPa(); renderTicker(); pushNative(); if (wxAgain) { wxAgain = false; refreshWx(true); } }
@@ -1657,6 +1697,7 @@ function renderWx() {
       <div><div class="t">${Math.round(age < WX_NOW ? c.current.t : today ? today.hi : c.current.t)}<small>°C</small></div>
       <div class="lbl" style="margin-top:6px">${esc(c.name)}${age < WX_NOW ? ' · ' + esc(c.current.text) : ' · today’s high'}</div></div></div>
     ${today ? `<div class="mono" style="font-size:12px;color:var(--dim)">H ${Math.round(today.hi)}° · L ${Math.round(today.lo)}° · <span${today.p >= 30 ? ' class="wxwet"' : ''}>Rain ${today.p}%</span>${c.current.rh != null && age < WX_NOW ? ` · RH ${Math.round(c.current.rh)}% · Wind ${Math.round(c.current.wind)} km/h` : ''}</div>` : ''}
+    ${c.current.n >= 2 && age < WX_NOW ? `<div class="wxagree">${[...Array(c.current.n)].map((_, i) => `<i${i < c.current.agree ? ' class="on"' : ''}></i>`).join('')}<span><b>${c.current.agree} of ${c.current.n}</b> forecasts agree · range ${Math.round(c.current.lo) === Math.round(c.current.hi) ? Math.round(c.current.lo) : Math.round(c.current.lo) + '–' + Math.round(c.current.hi)}°</span></div>` : ''}
     <div class="days">${days.map(d => { const dd = dOf(d.d); return `<div class="dcell"><span class="d">${d.d === t ? 'TODAY' : DOW[dd.getUTCDay()]}</span>${dotIcon(d.cond || kindOf(d.p), 28)}<span class="hl">${Math.round(d.hi)}° <span>${Math.round(d.lo)}°</span></span><span class="pp${d.p >= 30 ? ' wet' : ''}">${d.p}%</span></div>`; }).join('')}</div>
     <div class="foot"><span class="stale">${navigator.onLine ? 'Updated' : 'Offline · saved forecast from'} ${when} BKK${age > 36 * 3600e3 ? ` · ${Math.floor(age / 864e5)} day${age >= 2 * 864e5 ? 's' : ''} old` : ''}</span>${navigator.onLine ? `<button class="btn ghost ico" id="wxR" aria-label="Refresh weather" title="Refresh weather">${ic('refresh')}</button>` : ''}</div>`;
 }
@@ -3285,7 +3326,7 @@ function widgetPayload() {
   if (wd) { const rep = span(wd)[0], leave = rep - w.travel * 60000, alarm = leave - w.ready * 60000; wake = { rep, leave, alarm, bed: alarm - w.sleep * 3600e3, what: wd.type === 'FDP' ? 'Report' : (TYPES[wd.type] || wd.type), flt: wd.legs && wd.legs[0] ? wd.legs[0].flt || null : null }; }
   const sunDays = c => [0, 1, 2].map(i => { const ds = addDays(t, i), rs = AP[c] ? sunRS(ds, AP[c][0], AP[c][1]) : null; return { d: ds, rise: rs ? rs[0] : null, set: rs ? rs[1] : null }; });
   const wx = WX && WX.cities ? { updatedAt: WX.updatedAt || '', cities: wxCodes().map(c => { const x = wxFor(c);
-      return { code: c, name: AP[c] ? AP[c][2] : c, lat: AP[c] ? AP[c][0] : 0, lon: AP[c] ? AP[c][1] : 0, tz: TZ[c] || 'Asia/Bangkok',
+      return { code: c, name: AP[c] ? AP[c][2] : c, lat: AP[c] ? wxPos(c)[0] : 0, lon: AP[c] ? wxPos(c)[1] : 0, tz: TZ[c] || 'Asia/Bangkok',
         current: x && x.current ? { t: x.current.t, cond: x.current.cond || 'cloud', text: x.current.text || '' } : null,
         daily: x && x.daily ? x.daily.filter(q => q.d >= t).slice(0, 6).map(q => ({ d: q.d, hi: q.hi, lo: q.lo, p: q.p || 0, cond: q.cond || 'cloud' })) : [] }; }) } : null;
   const items = k => S[k].slice(0, 30).map(i => ({ id: String(i.id), text: i.text, done: !!i.done, qty: i.qty ? String(i.qty) : null }));
