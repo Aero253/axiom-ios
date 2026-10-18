@@ -1,0 +1,23 @@
+name: Sound preview
+on:
+  push:
+    branches: [sound-preview]
+jobs:
+  voices:
+    runs-on: macos-15
+    permissions:
+      contents: write
+    steps:
+      - name: Speak the warnings in a few voices
+        run: |
+          mkdir out; say -v '?' | grep -E "en_(US|GB|AU|IE|ZA|IN)" > out/voices.txt || true; cat out/voices.txt
+          for v in Samantha Daniel Karen Moira Tessa Rishi; do
+            say -v "$v" -r 165 "Warning. Storm incoming." -o "out/storm-$v.aiff" || true
+            say -v "$v" -r 165 "Rain incoming." -o "out/rain-$v.aiff" || true
+          done
+          ls -la out; cd out && zip -q ../voices.zip *
+      - name: Upload
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          gh release delete sound-preview -y -R "$GITHUB_REPOSITORY" --cleanup-tag || true
+          gh release create sound-preview voices.zip -R "$GITHUB_REPOSITORY" --prerelease --title "Sound preview" --notes "voices" --target "$GITHUB_SHA"
