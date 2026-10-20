@@ -147,6 +147,20 @@ final class WidgetPreviewTests: XCTestCase {
         XCTAssertNil(StormWatch.find(["hourly": weak], now: now))
     }
 
+    func testRainAlert() throws {
+        var h: [String: Any] = ["time": ["2026-10-20T13:00", "2026-10-20T14:00", "2026-10-20T15:00"]]
+        let rows: [[Int]] = [[3, 61, 63], [2, 80, 80], [3, 53, 95], [1, 61, 2], [3, 3, 81], [2, 2, 61]]
+        for (i, m) in StormWatch.models.enumerated() { h["weather_code_\(m)"] = rows[i] }
+        let f = ISO8601DateFormatter()
+        let now = try XCTUnwrap(f.date(from: "2026-10-20T13:20:00Z"))
+        XCTAssertNil(StormWatch.find(["hourly": h], now: now), "storms only: no storm here")
+        let hit = try XCTUnwrap(StormWatch.find(["hourly": h], now: now, storm: true, rain: true))
+        XCTAssertEqual(hit.kind, .rain)
+        XCTAssertEqual(hit.at, f.date(from: "2026-10-20T14:00:00Z"))
+        XCTAssertEqual(hit.agree, 4)
+        XCTAssertEqual(StormWatch.message(hit, name: "Lak Si", tz: "Asia/Bangkok", now: now).title, "🌧 Rain incoming · Lak Si")
+    }
+
     func testNoStormAlertsInTheAir() {
         let ms = now.timeIntervalSince1970 * 1000
         var p = payload!

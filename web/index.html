@@ -744,7 +744,7 @@ body.calm *, body.calm *::before, body.calm *::after{animation:none!important; t
     </section></div>
 
     <div class="w" data-w="wx"><section class="p" id="pWx" aria-label="Weather">
-      <div class="ph"><h2>Weather</h2><div class="hr"><div class="wxtabs" id="wxTabs"></div><button class="btn ghost ico nbell" id="nStorm" data-nk="storm" data-ic="bell" aria-pressed="true" aria-label="Storm alerts" title="Storm alerts"></button><button class="btn ghost ico" id="wxEditB" data-pe="wx" data-ic="pen" aria-label="Edit cities" title="Edit cities" aria-pressed="false"></button></div></div>
+      <div class="ph"><h2>Weather</h2><div class="hr"><div class="wxtabs" id="wxTabs"></div><button class="btn ghost ico nbell" id="nStorm" data-nk="storm" data-ic="bolt" aria-pressed="true" aria-label="Storm alerts" title="Storm alerts"></button><button class="btn ghost ico nbell" id="nRain" data-nk="rain" data-ic="drop" aria-pressed="true" aria-label="Rain alerts" title="Rain alerts"></button><button class="btn ghost ico" id="wxEditB" data-pe="wx" data-ic="pen" aria-label="Edit cities" title="Edit cities" aria-pressed="false"></button></div></div>
       <div id="wxBody"></div>
       <div id="wxEd" data-ped="wx" hidden></div>
     </section></div>
@@ -1297,7 +1297,7 @@ const BAG_DEFAULT = ['Passport', 'Crew ID card', 'Cabin crew licence', 'Name bad
 const S = { roster: { duties: [], name: '', base: 'DMK', importedAt: '' }, events: [], todos: [], shopping: [], notes: '', world: ['NRT', 'SIN'], whide: [], layout: [],
   count: [], bag: BAG_DEFAULT.map((t, i) => ({ id: 'b' + i, text: t, done: false })), fx: FX_DEFAULT.slice(),
   links: [{ id: 'swap', label: 'SL Swap Check', url: 'https://aero253.github.io/SL-Roster-swap-checker/' }],
-  docs: [], exp: [], lay: {}, wake: { travel: 60, ready: 45, sleep: 8 }, alarm: { snooze: 9, pick: 'flip', list: [] }, notify: { duty: true, water: true, storm: true }, water: { date: '', n: 0, goal: 8 }, places: { sun: { add: [], hide: [] }, wx: { add: [], hide: [] } }, pa: { tpl: '' } };
+  docs: [], exp: [], lay: {}, wake: { travel: 60, ready: 45, sleep: 8 }, alarm: { snooze: 9, pick: 'flip', list: [] }, notify: { duty: true, water: true, storm: true, rain: true }, water: { date: '', n: 0, goal: 8 }, places: { sun: { add: [], hide: [] }, wx: { add: [], hide: [] } }, pa: { tpl: '' } };
 const V = { month: todayISO().slice(0, 7), sel: todayISO(), wx: 'DMK', msg: null };
 
 /* Example month shown only until a roster is imported. Never saved. */
@@ -2672,16 +2672,16 @@ function remindersForNative() {
       if (d.type !== 'HSBY') list.push({ key: 'l' + rep, at: leave, title: 'Time to leave', body: `${what}. Leave now to be there on time.` });   // home standby: you stay home
       list.push({ key: 'r' + rep, at: rep - 30 * 60000, title: d.type === 'FDP' ? 'Report in 30 minutes' : `${d.label || TYPES[d.type] || d.type} in 30 minutes`, body: what });
     });
-  return { duty: list.filter(x => x.at > now).slice(0, 24), water: N.water !== false, storm: N.storm !== false && !demo() };
+  return { duty: list.filter(x => x.at > now).slice(0, 24), water: N.water !== false, storm: N.storm !== false && !demo(), rain: N.rain !== false && !demo() };
 }
 const hm0 = h => { const m = Math.round(h * 60); return `${Math.floor(m / 60)} h${m % 60 ? ' ' + (m % 60) + ' min' : ''}`; };
 function renderBells() {
   const N = S.notify || {};
-  [['#nDuty', 'duty', 'Duty reminders'], ['#nWater', 'water', 'Water reminders'], ['#nStorm', 'storm', 'Storm alerts']].forEach(([id, k, l]) => { const b = $(id); if (!b) return;
-    const on = N[k] !== false; b.setAttribute('aria-pressed', on); setIc(b, on ? 'bell' : 'bellOff', `${l}: ${on ? 'on' : 'off'}`); });
+  [['#nDuty', 'duty', 'Duty reminders'], ['#nWater', 'water', 'Water reminders'], ['#nStorm', 'storm', 'Storm alerts', 'bolt'], ['#nRain', 'rain', 'Rain alerts', 'drop']].forEach(([id, k, l, icon]) => { const b = $(id); if (!b) return;
+    const on = N[k] !== false; b.setAttribute('aria-pressed', on); setIc(b, icon || (on ? 'bell' : 'bellOff'), `${l}: ${on ? 'on' : 'off'}`); });
 }
 document.addEventListener('click', e => { const b = e.target.closest('.nbell'); if (!b) return;
-  S.notify = { duty: true, water: true, storm: true, ...(S.notify || {}) }; S.notify[b.dataset.nk] = S.notify[b.dataset.nk] === false; save('notify'); renderBells(); });
+  S.notify = { duty: true, water: true, storm: true, rain: true, ...(S.notify || {}) }; S.notify[b.dataset.nk] = S.notify[b.dataset.nk] === false; save('notify'); renderBells(); });
 renderBells();
 
 /* ---------- layovers (night-stops on the roster) ---------- */

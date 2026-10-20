@@ -13,6 +13,7 @@ struct NotifyPlan: Codable, Hashable {
     var duty: [Reminder]
     var water: Bool
     var storm: Bool? = nil   // added in 1.4: storm alerts where you are
+    var rain: Bool? = nil    // added in 1.4: rain alerts where you are
 }
 
 /// Axiom's notifications. Scheduled ahead on the phone, so they arrive with the app closed and no internet.
@@ -47,7 +48,7 @@ enum Reminders {
     static func sync(_ payload: Payload?, ask: Bool) async {
         guard let p = payload else { return }
         let plan = p.notify
-        let wantsAny = !(plan?.duty.isEmpty ?? true) || plan?.water == true || plan?.storm == true
+        let wantsAny = !(plan?.duty.isEmpty ?? true) || plan?.water == true || plan?.storm == true || plan?.rain == true
         let center = UNUserNotificationCenter.current()
         var status = await center.notificationSettings().authorizationStatus
         if status == .notDetermined && wantsAny && ask {
