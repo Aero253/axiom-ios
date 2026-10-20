@@ -44,14 +44,19 @@ struct WxProvider: TimelineProvider {
             var here = await Here.refresh(timeout: 2)
             if let h = here, Date().timeIntervalSince1970 * 1000 - h.at > 24 * 3600e3 { here = nil }   // a day-old place is no use
             if let h = here { cities.insert(h.city, at: 0) }
+            let storm = Task { await StormWatch.run(payload) }   // storm alert for where you are, alongside
             guard !cities.isEmpty else {
+                _ = await storm.value
                 completion(Timeline(entries: [WxEntry(date: Date(), wx: saved, demo: demo)], policy: .after(next)))
                 return
             }
             fetch(cities) { fresh in
                 let wx = fresh ?? saved
                 if let f = fresh { Shared.saveWeather(f) }
-                completion(Timeline(entries: [WxEntry(date: Date(), wx: wx, demo: demo)], policy: .after(next)))
+                Task {
+                    _ = await storm.value
+                    completion(Timeline(entries: [WxEntry(date: Date(), wx: wx, demo: demo)], policy: .after(next)))
+                }
             }
         }
     }

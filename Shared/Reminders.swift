@@ -12,6 +12,7 @@ struct Reminder: Codable, Hashable {
 struct NotifyPlan: Codable, Hashable {
     var duty: [Reminder]
     var water: Bool
+    var storm: Bool? = nil   // added in 1.4: storm alerts where you are
 }
 
 /// Axiom's notifications. Scheduled ahead on the phone, so they arrive with the app closed and no internet.
@@ -46,7 +47,7 @@ enum Reminders {
     static func sync(_ payload: Payload?, ask: Bool) async {
         guard let p = payload else { return }
         let plan = p.notify
-        let wantsAny = !(plan?.duty.isEmpty ?? true) || plan?.water == true
+        let wantsAny = !(plan?.duty.isEmpty ?? true) || plan?.water == true || plan?.storm == true
         let center = UNUserNotificationCenter.current()
         var status = await center.notificationSettings().authorizationStatus
         if status == .notDetermined && wantsAny && ask {
@@ -66,7 +67,7 @@ enum Reminders {
             let c = UNMutableNotificationContent()
             c.title = r.title
             c.body = r.body
-            c.sound = .default
+            c.sound = UNNotificationSound(named: UNNotificationSoundName("axiom-bip.wav"))   // Axiom's bip-bip
             c.interruptionLevel = .timeSensitive
             c.threadIdentifier = "axiom.duty"
             requests.append(UNNotificationRequest(identifier: prefix + "duty." + r.key, content: c,
@@ -78,7 +79,7 @@ enum Reminders {
                 let c = UNMutableNotificationContent()
                 c.title = "Drink water"
                 c.body = have == 0 ? "No water yet today. Have a glass now." : "\(have) of \(w.goal) glasses so far. Time for another."
-                c.sound = .default
+                c.sound = UNNotificationSound(named: UNNotificationSoundName("axiom-bip.wav"))
                 c.threadIdentifier = "axiom.water"
                 requests.append(UNNotificationRequest(identifier: prefix + "water." + String(Int(at.timeIntervalSince1970)), content: c,
                     trigger: UNCalendarNotificationTrigger(dateMatching: cal.dateComponents([.year, .month, .day, .hour, .minute], from: at), repeats: false)))

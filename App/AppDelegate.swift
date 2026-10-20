@@ -9,6 +9,8 @@ final class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationC
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         UNUserNotificationCenter.current().delegate = self
         ReportLive.registerEndTask()   // must be registered before launch finishes
+        StormRefresh.register()
+        StormWatch.installSounds()     // so alerts sent by the widget find Axiom's sounds too
         let w = UIWindow(frame: UIScreen.main.bounds)
         w.rootViewController = DashboardViewController()
         w.backgroundColor = .black

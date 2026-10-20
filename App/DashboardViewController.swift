@@ -130,6 +130,7 @@ final class DashboardViewController: UIViewController, WKScriptMessageHandler, W
         Task { await Reminders.sync(Shared.load(), ask: false) }   // a new day: fresh water reminders
         Task { await ReportLive.sync(Shared.load()) }   // in the last 2 hours before report: start the countdown; after it: take it away
         refreshHere()   // moved on (a layover): the weather follows
+        StormRefresh.onOpen()   // storm alerts where you are
     }
 
     /// Items ticked off on the To-do or Shopping widget: hand them to the dashboard, then forget them once it has them.

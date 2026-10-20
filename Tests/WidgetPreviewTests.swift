@@ -126,6 +126,36 @@ final class WidgetPreviewTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(c.daily.count, 5)
     }
 
+    func testStormAlert() throws {
+        // six forecasts for 13:00–16:00 UTC; at 15:00 four of them show a thunderstorm
+        var h: [String: Any] = ["time": ["2026-10-20T13:00", "2026-10-20T14:00", "2026-10-20T15:00", "2026-10-20T16:00"]]
+        let rows: [[Int]] = [[3, 3, 95, 95], [2, 80, 95, 3], [3, 3, 96, 95], [1, 1, 95, 2], [3, 61, 80, 80], [2, 2, 3, 95]]
+        for (i, m) in StormWatch.models.enumerated() { h["weather_code_\(m)"] = rows[i] }
+        let f = ISO8601DateFormatter()
+        let now = try XCTUnwrap(f.date(from: "2026-10-20T13:20:00Z"))
+        let hit = try XCTUnwrap(StormWatch.find(["hourly": h], now: now))
+        XCTAssertEqual(hit.at, f.date(from: "2026-10-20T15:00:00Z"))
+        XCTAssertEqual(hit.agree, 4)
+        XCTAssertEqual(hit.of, 6)
+        let m = StormWatch.message(hit, name: "Lak Si", tz: "Asia/Bangkok", now: now)
+        XCTAssertEqual(m.title, "⚡ Storm incoming · Lak Si")
+        XCTAssertEqual(m.body, "Thunderstorm likely around 22:00. 4 of 6 forecasts agree.")
+        // too far ahead: nothing yet
+        XCTAssertNil(StormWatch.find(["hourly": h], now: try XCTUnwrap(f.date(from: "2026-10-20T11:00:00Z"))))
+        // only two forecasts agree: no alert
+        var weak = h; weak["weather_code_gfs_seamless"] = [2, 2, 2, 2]; weak["weather_code_icon_seamless"] = [2, 2, 2, 2]; weak["weather_code_jma_seamless"] = [2, 2, 2, 2]
+        XCTAssertNil(StormWatch.find(["hourly": weak], now: now))
+    }
+
+    func testNoStormAlertsInTheAir() {
+        let ms = now.timeIntervalSince1970 * 1000
+        var p = payload!
+        p.duties = [Duty(date: "2026-10-07", type: "FDP", what: "Report", start: nil, end: nil, rep: ms - 3600e3, off: ms + 3600e3, flts: [], route: [])]
+        XCTAssertTrue(StormWatch.flying(p, now: now))
+        p.duties[0].type = "HSBY"
+        XCTAssertFalse(StormWatch.flying(p, now: now))
+    }
+
     func testSiriAnswers() throws {
         let next = Speak.nextReport(payload, now: now)
         print("Siri next report:", next)
